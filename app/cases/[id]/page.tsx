@@ -15,6 +15,8 @@ import { PillarUnderstanding } from "@/components/detail/pillar-understanding";
 import { PillarPerformance } from "@/components/detail/pillar-performance";
 import { PillarTrust } from "@/components/detail/pillar-trust";
 import { DeepTabs } from "@/components/detail/deep-tabs";
+import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
+import { ReasoningTraceCard } from "@/components/detail/reasoning-trace";
 import { TimelineSection } from "@/components/detail/timeline";
 import { getCaseById, mockCases } from "@/lib/mock-data";
 
@@ -85,6 +87,20 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
       {/* ═══ PROOF NARRATIVE (resolved cases only) ═══ */}
       {!isPending && c.oracle_result && <ProofNarrative c={c} />}
+
+      {/* ═══ DISCOVERED SOURCES (if deferred discovery) ═══ */}
+      {c.oracle_result?.discovered_sources && c.oracle_result.discovered_sources.length > 0 && (
+        <DiscoveredSourcesCard sources={c.oracle_result.discovered_sources} />
+      )}
+
+      {/* ═══ REASONING TRACE ═══ */}
+      {c.oracle_result?.reasoning_steps && c.oracle_result.reasoning_steps.length > 0 && (
+        <ReasoningTraceCard
+          steps={c.oracle_result.reasoning_steps}
+          evidenceSummary={c.oracle_result.evidence_summary}
+          reasoningSummary={c.oracle_result.reasoning_summary}
+        />
+      )}
 
       {/* ═══ THREE PILLARS + TIMELINE ═══ */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">

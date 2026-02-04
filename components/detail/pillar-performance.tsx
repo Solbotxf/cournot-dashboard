@@ -56,9 +56,10 @@ export function PillarPerformance({ c }: { c: MarketCase }) {
     );
   }
 
-  const passingChecks = oracle.checks.filter((ch) => ch.status === "pass").length;
-  const failingChecks = oracle.checks.filter((ch) => ch.status === "fail").length;
-  const warnChecks = oracle.checks.filter((ch) => ch.status === "warn").length;
+  const checks = oracle.checks ?? [];
+  const passingChecks = checks.filter((ch) => ch.status === "pass").length;
+  const failingChecks = checks.filter((ch) => ch.status === "fail").length;
+  const warnChecks = checks.filter((ch) => ch.status === "warn").length;
   const resolveLatency = formatLatency(
     oracle.executed_at,
     c.source.official_resolved_at
@@ -118,7 +119,7 @@ export function PillarPerformance({ c }: { c: MarketCase }) {
               </span>
               <span className="text-xs text-muted-foreground">/</span>
               <span className="text-lg font-bold font-mono tabular-nums text-foreground/60">
-                {oracle.checks.length}
+                {checks.length}
               </span>
             </div>
           </div>
@@ -127,10 +128,10 @@ export function PillarPerformance({ c }: { c: MarketCase }) {
         {/* Check results list */}
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Check Results ({oracle.checks.length})
+            Check Results ({checks.length})
           </p>
           <div className="space-y-1">
-            {oracle.checks.map((check) => {
+            {checks.map((check) => {
               const icons = {
                 pass: { icon: CheckCircle2, color: "text-emerald-400" },
                 fail: { icon: XCircle, color: "text-red-400" },

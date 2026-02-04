@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { PromptSpec } from "@/lib/types";
+import { renderText, normalizeRules, normalizeSources } from "@/lib/utils";
 import { Info, Shield, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ export function MarketSpecCard({ spec }: { spec: PromptSpec }) {
             Event Definition
           </p>
           <div className="rounded-lg bg-muted/30 border border-border p-3 font-mono text-xs text-foreground/80 leading-relaxed">
-            {m.event_definition}
+            {renderText(m.event_definition)}
           </div>
         </div>
 
@@ -71,7 +72,7 @@ export function MarketSpecCard({ spec }: { spec: PromptSpec }) {
             Resolution Rules
           </p>
           <div className="space-y-1.5">
-            {m.resolution_rules
+            {normalizeRules(m.resolution_rules)
               .sort((a, b) => a.priority - b.priority)
               .map((rule) => (
                 <div
@@ -131,7 +132,7 @@ export function MarketSpecCard({ spec }: { spec: PromptSpec }) {
               Allowed Sources
             </p>
             <div className="flex flex-wrap gap-1">
-              {m.allowed_sources.map((s) => (
+              {normalizeSources(m.allowed_sources).map((s) => (
                 <Badge key={s} variant="outline" className="text-[10px] font-mono capitalize">
                   {s}
                 </Badge>

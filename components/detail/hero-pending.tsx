@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { MarketCase } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, renderText, normalizeRules, normalizeSources } from "@/lib/utils";
 import {
   Brain,
   AlertTriangle,
@@ -17,8 +17,8 @@ import {
 
 function getAmbiguityLevel(spec: MarketCase["parse_result"]["prompt_spec"]) {
   if (!spec) return { level: "unknown", color: "text-slate-400", bg: "bg-slate-500/10 border-slate-500/20" };
-  const rules = spec.market.resolution_rules.length;
-  const sources = spec.market.allowed_sources.length;
+  const rules = normalizeRules(spec.market.resolution_rules).length;
+  const sources = normalizeSources(spec.market.allowed_sources).length;
   const forbidden = spec.forbidden_behaviors.length;
   // Simple heuristic: more rules + sources + forbidden = lower ambiguity
   const score = rules + sources + forbidden;
@@ -70,13 +70,13 @@ export function HeroPending({ c }: { c: MarketCase }) {
                   <div>
                     <p className="text-[10px] text-muted-foreground/70">Event Definition</p>
                     <p className="text-xs text-foreground/80 font-mono leading-relaxed">
-                      {spec.market.event_definition}
+                      {renderText(spec.market.event_definition)}
                     </p>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground/70">Prediction Type</p>
                     <Badge variant="outline" className="text-[10px] font-mono">
-                      {spec.prediction_semantics}
+                      {renderText(spec.prediction_semantics)}
                     </Badge>
                   </div>
                   <div>
@@ -133,18 +133,32 @@ export function HeroPending({ c }: { c: MarketCase }) {
                   <div className="flex items-center gap-2">
                     <Database className="h-3 w-3 text-blue-400" />
                     <p className="text-xs">
-                      <span className="text-foreground font-medium">{plan.sources.length}</span>
-                      <span className="text-muted-foreground"> sources planned</span>
+                      {plan.sources.length > 0 ? (
+                        <>
+                          <span className="text-foreground font-medium">{plan.sources.length}</span>
+                          <span className="text-muted-foreground"> sources planned</span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Deferred source discovery</span>
+                      )}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    {plan.sources.map((s) => (
-                      <div key={s.source_id} className="flex items-center gap-2 text-xs">
-                        <span className="font-mono text-violet-400 text-[11px]">{s.provider}</span>
-                        <span className="text-muted-foreground text-[10px] ml-auto">Tier {s.tier}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {plan.sources.length > 0 ? (
+                    <div className="space-y-1">
+                      {plan.sources.map((s) => (
+                        <div key={s.source_id} className="flex items-center gap-2 text-xs">
+                          <span className="font-mono text-violet-400 text-[11px]">{s.provider}</span>
+                          <span className="text-muted-foreground text-[10px] ml-auto">Tier {s.tier}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2">
+                      <p className="text-[11px] text-sky-400">
+                        Sources will be discovered at resolve time
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-1 border-t border-border/50 space-y-1.5">
                   <div className="flex items-center gap-2 text-xs">

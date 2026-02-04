@@ -19,7 +19,7 @@ import { ProofArtifactChip } from "@/components/shared/proof-artifact-chip";
 import { OutcomeBadge, VerificationBadge } from "@/components/shared/status-badge";
 import { ConfidenceBar } from "@/components/shared/confidence-bar";
 import type { MarketCase, Check } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, renderText, normalizeRules } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -236,7 +236,7 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
 
   const spec = c.parse_result.prompt_spec;
   const plan = c.parse_result.tool_plan;
-  const checks = oracle.checks;
+  const checks = oracle.checks ?? [];
   const passingChecks = checks.filter((ch) => ch.status === "pass").length;
   const failingChecks = checks.filter((ch) => ch.status === "fail").length;
 
@@ -308,7 +308,7 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
                   Event Definition
                 </p>
                 <div className="rounded-lg bg-muted/30 border border-border/50 p-2.5 font-mono text-[11px] text-foreground/70 leading-relaxed">
-                  {spec.market.event_definition}
+                  {renderText(spec.market.event_definition)}
                 </div>
               </div>
             )}
@@ -348,14 +348,24 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
           summaryLine={
             <span>
               {plan ? (
-                <>
-                  Queried <span className="font-mono text-foreground/60">{plan.sources.length}</span> sources
-                  {" using "}
-                  <span className="font-mono text-foreground/60">
-                    {spec?.data_requirements[0]?.selection_policy.strategy ?? "quorum"}
-                  </span>
-                  {" strategy"}
-                </>
+                plan.sources.length > 0 ? (
+                  <>
+                    Queried <span className="font-mono text-foreground/60">{plan.sources.length}</span> sources
+                    {" using "}
+                    <span className="font-mono text-foreground/60">
+                      {spec?.data_requirements[0]?.selection_policy.strategy ?? "quorum"}
+                    </span>
+                    {" strategy"}
+                  </>
+                ) : (
+                  <>
+                    Sources discovered at resolve time using{" "}
+                    <span className="font-mono text-foreground/60">
+                      {spec?.data_requirements[0]?.selection_policy.strategy ?? "quorum"}
+                    </span>
+                    {" strategy"}
+                  </>
+                )
               ) : (
                 "No tool plan — evidence collection details unavailable"
               )}
@@ -365,6 +375,7 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
           {plan && spec ? (
             <div className="space-y-3">
               {/* Source cards */}
+              {plan.sources.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {plan.sources.map((source) => {
                   // Find check referencing this source's requirement
@@ -410,6 +421,13 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
                   );
                 })}
               </div>
+              ) : (
+              <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2.5">
+                <p className="text-[11px] text-sky-400">
+                  Deferred source discovery — sources were found at resolve time
+                </p>
+              </div>
+              )}
 
               {/* Selection policy */}
               {spec.data_requirements.map((req) => (
@@ -468,7 +486,7 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
                 <>
                   Applied{" "}
                   <span className="font-mono text-foreground/60">
-                    {spec.market.resolution_rules.length}
+                    {normalizeRules(spec.market.resolution_rules).length}
                   </span>
                   {" resolution rules in priority order"}
                 </>
@@ -480,7 +498,7 @@ export function ProofNarrative({ c }: { c: MarketCase }) {
         >
           {spec ? (
             <div className="space-y-2">
-              {spec.market.resolution_rules
+              {normalizeRules(spec.market.resolution_rules)
                 .sort((a, b) => a.priority - b.priority)
                 .map((rule) => {
                   // Find any check that might relate to this rule

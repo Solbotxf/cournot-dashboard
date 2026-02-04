@@ -50,16 +50,24 @@ function DataRequirementsTable({ reqs }: { reqs: DataRequirement[] }) {
                 </div>
               </TableCell>
               <TableCell>
-                <div className="space-y-1">
-                  {req.source_targets.map((st) => (
-                    <div key={st.uri} className="text-[11px]">
-                      <span className="font-mono text-violet-400">{st.provider}</span>
-                      <p className="text-muted-foreground truncate max-w-[200px] font-mono text-[10px]">
-                        {st.uri}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {req.source_targets.length > 0 ? (
+                  <div className="space-y-1">
+                    {req.source_targets.map((st) => (
+                      <div key={st.uri} className="text-[11px]">
+                        <span className="font-mono text-violet-400">{st.provider}</span>
+                        <p className="text-muted-foreground truncate max-w-[200px] font-mono text-[10px]">
+                          {st.uri}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : req.deferred_source_discovery ? (
+                  <Badge variant="outline" className="text-[10px] text-sky-400 border-sky-500/20 bg-sky-500/10">
+                    Deferred
+                  </Badge>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">

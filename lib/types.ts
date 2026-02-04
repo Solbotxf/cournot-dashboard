@@ -55,6 +55,7 @@ export interface DataRequirement {
     strategy: string;
     quorum: number;
   };
+  deferred_source_discovery?: boolean;
 }
 
 export interface MarketSpec {
@@ -172,6 +173,12 @@ export interface ExecutionStep {
   latency_ms: number;
 }
 
+export interface DiscoveredSource {
+  url: string;
+  title: string;
+  relevance: "high" | "medium" | "low";
+}
+
 export interface RunSummary {
   market_id: string;
   outcome: Outcome;
@@ -196,6 +203,7 @@ export interface RunSummary {
   confidence_breakdown?: ConfidenceBreakdown;
   llm_review?: LLMReview;
   execution_steps?: ExecutionStep[];
+  discovered_sources?: DiscoveredSource[];
 }
 
 // ─── Market Case (merged view) ──────────────────────────────────────────────

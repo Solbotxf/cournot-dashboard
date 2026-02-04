@@ -5,8 +5,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_usgov_shutdown_jan26",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/us-gov-shutdown-jan-2026",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/us-gov-shutdown-jan-2026",
       title: "US Government Shutdown Saturday?",
       question:
         "Will the U.S. Office of Personnel Management (OPM) announce another federal government shutdown due to a lapse in appropriations by January 31, 2026, 11:59 PM ET?",
@@ -370,8 +370,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_fed_jan25",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/fed-rate-jan-2025",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/fed-rate-jan-2025",
       title: "Fed Rate Cut January 2025",
       question: "Will the Federal Reserve cut interest rates at the January 2025 FOMC meeting?",
       resolution_deadline: "2025-01-29T20:00:00Z",
@@ -708,8 +708,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_tiktok_ban",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/tiktok-ban-us-jan-2025",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/tiktok-ban-us-jan-2025",
       title: "US TikTok Ban Enforcement",
       question: "Will the US enforce a TikTok ban or forced sale by January 19, 2025?",
       resolution_deadline: "2025-01-19T23:59:00Z",
@@ -913,8 +913,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_sp500_correction",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/sp500-correction-q1-2025",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/sp500-correction-q1-2025",
       title: "S&P 500 10% Correction Q1 2025",
       question: "Will the S&P 500 experience a 10%+ correction from its Q1 2025 peak?",
       resolution_deadline: "2025-03-31T23:59:00Z",
@@ -982,8 +982,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_china_gdp_5",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/china-gdp-2024",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/china-gdp-2024",
       title: "China 2024 GDP Growth > 5%",
       question: "Will China's official 2024 GDP growth rate exceed 5%?",
       resolution_deadline: "2025-01-31T00:00:00Z",
@@ -1070,8 +1070,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_tsla_500k_q4",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/tesla-500k-q4-2024",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/tesla-500k-q4-2024",
       title: "Tesla Q4 2024 Deliveries > 500K",
       question: "Will Tesla deliver more than 500,000 vehicles in Q4 2024?",
       resolution_deadline: "2025-01-10T00:00:00Z",
@@ -1157,8 +1157,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_eu_ai_act",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/eu-ai-act-enforcement-2025",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/eu-ai-act-enforcement-2025",
       title: "EU AI Act Enforcement Before June 2025",
       question: "Will the EU AI Act begin formal enforcement actions before June 2025?",
       resolution_deadline: "2025-06-01T00:00:00Z",
@@ -1226,8 +1226,8 @@ export const mockCases: MarketCase[] = [
   {
     market_id: "mk_argentina_cpi",
     source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/argentina-inflation-under-100",
+      platform: "kalshi",
+      event_url: "https://kalshi.com/markets/argentina-inflation-under-100",
       title: "Argentina YoY Inflation < 100%",
       question: "Will Argentina's year-over-year inflation rate drop below 100% by March 2025?",
       resolution_deadline: "2025-03-31T00:00:00Z",

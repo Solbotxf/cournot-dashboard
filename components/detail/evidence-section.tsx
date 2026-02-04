@@ -160,13 +160,13 @@ export function EvidenceSection({
         )}
 
         {/* Checks */}
-        {result.checks.length > 0 && (
+        {(result.checks ?? []).length > 0 && (
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Checks ({result.checks.length})
+              Checks ({(result.checks ?? []).length})
             </p>
             <div className="space-y-1.5">
-              {result.checks.map((check) => (
+              {(result.checks ?? []).map((check) => (
                 <CheckItem key={check.check_id} check={check} />
               ))}
             </div>

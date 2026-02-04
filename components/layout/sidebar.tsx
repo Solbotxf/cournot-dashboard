@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
+  FlaskConical,
   Play,
   Globe,
   AlertTriangle,
@@ -20,6 +21,7 @@ const navGroups = [
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/cases", label: "Cases", icon: FileText },
+      { href: "/playground", label: "Playground", icon: FlaskConical },
     ],
   },
   {

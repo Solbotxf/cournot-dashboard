@@ -117,7 +117,7 @@ export function OutcomeCompareCard({ c }: { c: MarketCase }) {
                     {c.oracle_result.duration_ms}ms
                   </p>
                 </div>
-                {c.oracle_result.errors.length > 0 && (
+                {(c.oracle_result.errors ?? []).length > 0 && (
                   <ErrorCallout errors={c.oracle_result.errors} />
                 )}
               </>

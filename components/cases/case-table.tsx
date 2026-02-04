@@ -34,7 +34,7 @@ import {
   Zap,
   Shield,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, renderText } from "@/lib/utils";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -164,7 +164,7 @@ function AiPreviewPanel({ c }: { c: MarketCase }) {
             <div className="flex gap-2">
               <span className="text-muted-foreground w-16 shrink-0">Semantics</span>
               <span className="text-foreground/80 font-mono text-[11px]">
-                {spec.prediction_semantics}
+                {renderText(spec.prediction_semantics)}
               </span>
             </div>
             <div className="flex gap-2">
@@ -193,14 +193,18 @@ function AiPreviewPanel({ c }: { c: MarketCase }) {
                 </Badge>
               ))}
             </div>
-            <div className="space-y-0.5">
-              {plan.sources.map((s) => (
-                <div key={s.source_id} className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-violet-400 font-mono">{s.provider}</span>
-                  <span className="text-muted-foreground">T{s.tier}</span>
-                </div>
-              ))}
-            </div>
+            {plan.sources.length > 0 ? (
+              <div className="space-y-0.5">
+                {plan.sources.map((s) => (
+                  <div key={s.source_id} className="flex items-center gap-1.5 text-[11px]">
+                    <span className="text-violet-400 font-mono">{s.provider}</span>
+                    <span className="text-muted-foreground">T{s.tier}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-sky-400">Deferred discovery</p>
+            )}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">No tool plan</p>
@@ -468,7 +472,7 @@ export function CaseTableView({ cases }: { cases: MarketCase[] }) {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-1 px-0"></TableHead>
-                  <TableHead className="w-[28%]">Market</TableHead>
+                  <TableHead className="max-w-[260px]">Market</TableHead>
                   <TableHead>Platform</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Official</TableHead>
@@ -509,28 +513,26 @@ export function CaseTableView({ cases }: { cases: MarketCase[] }) {
                         </TableCell>
 
                         {/* Market */}
-                        <TableCell>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium truncate">
-                                  {c.source.title}
-                                </p>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/cases/${c.market_id}`);
-                                  }}
-                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-accent transition-all shrink-0"
-                                  title="View detail"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                </button>
-                              </div>
+                        <TableCell className="max-w-[260px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">
+                                {c.source.title}
+                              </p>
                               <p className="text-[11px] text-muted-foreground truncate">
                                 {c.source.question}
                               </p>
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/cases/${c.market_id}`);
+                              }}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-accent transition-all shrink-0"
+                              title="View detail"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </button>
                           </div>
                         </TableCell>
 

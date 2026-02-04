@@ -145,7 +145,7 @@ export function HeroResolved({ c }: { c: MarketCase }) {
                     {formatDateTime(oracle.executed_at)}
                   </p>
                 </div>
-                {oracle.errors.length > 0 && (
+                {(oracle.errors?.length ?? 0) > 0 && (
                   <ErrorCallout errors={oracle.errors} />
                 )}
               </>
@@ -203,7 +203,7 @@ export function HeroResolved({ c }: { c: MarketCase }) {
               <Shield className="h-3 w-3 text-muted-foreground" />
               <span className="text-muted-foreground">Checks:</span>
               <span className="font-mono font-medium">
-                {oracle.checks.filter((ch) => ch.status === "pass").length}/{oracle.checks.length} pass
+                {(oracle.checks ?? []).filter((ch) => ch.status === "pass").length}/{(oracle.checks ?? []).length} pass
               </span>
             </div>
             {oracle.execution_mode === "dry_run" && (

@@ -120,6 +120,7 @@ const execModeStyles: Record<ExecutionMode, string> = {
 };
 
 export function ExecutionModeBadge({ mode }: { mode: ExecutionMode }) {
+  if (!mode) return null;
   return (
     <Badge variant="outline" className={cn("text-[11px] font-medium", execModeStyles[mode])}>
       {mode === "dry_run" ? "DRY RUN" : mode.toUpperCase()}

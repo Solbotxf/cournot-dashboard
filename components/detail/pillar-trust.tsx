@@ -273,7 +273,7 @@ export function PillarTrust({ c }: { c: MarketCase }) {
             </div>
 
             {/* Errors */}
-            {oracle.errors.length > 0 && (
+            {(oracle.errors ?? []).length > 0 && (
               <>
                 <Separator />
                 <ErrorCallout errors={oracle.errors} />

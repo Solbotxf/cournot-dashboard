@@ -56,9 +56,10 @@ const tabDefs: TabDef[] = [
     icon: CheckCircle2,
     badge: (c) => {
       if (!c.oracle_result) return null;
-      const fail = c.oracle_result.checks.filter((ch) => ch.status === "fail").length;
+      const checks = c.oracle_result.checks ?? [];
+      const fail = checks.filter((ch) => ch.status === "fail").length;
       if (fail > 0) return `${fail} fail`;
-      return `${c.oracle_result.checks.length}`;
+      return `${checks.length}`;
     },
   },
   {
@@ -66,8 +67,8 @@ const tabDefs: TabDef[] = [
     label: "Errors",
     icon: AlertTriangle,
     badge: (c) => {
-      if (!c.oracle_result || c.oracle_result.errors.length === 0) return null;
-      return String(c.oracle_result.errors.length);
+      if (!c.oracle_result || (c.oracle_result.errors ?? []).length === 0) return null;
+      return String((c.oracle_result.errors ?? []).length);
     },
   },
   { key: "raw", label: "Raw Bundle", icon: Package },
@@ -100,16 +101,24 @@ function DataRequirementsTable({ reqs }: { reqs: DataRequirement[] }) {
                 </div>
               </TableCell>
               <TableCell>
-                <div className="space-y-1">
-                  {req.source_targets.map((st) => (
-                    <div key={st.uri} className="text-[11px]">
-                      <span className="font-mono text-violet-400">{st.provider}</span>
-                      <p className="text-muted-foreground truncate max-w-[200px] font-mono text-[10px]">
-                        {st.uri}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {req.source_targets.length > 0 ? (
+                  <div className="space-y-1">
+                    {req.source_targets.map((st) => (
+                      <div key={st.uri} className="text-[11px]">
+                        <span className="font-mono text-violet-400">{st.provider}</span>
+                        <p className="text-muted-foreground truncate max-w-[200px] font-mono text-[10px]">
+                          {st.uri}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : req.deferred_source_discovery ? (
+                  <Badge variant="outline" className="text-[10px] text-sky-400 border-sky-500/20 bg-sky-500/10">
+                    Deferred
+                  </Badge>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
@@ -153,27 +162,38 @@ function EvidenceSnapshotPanel({ c }: { c: MarketCase }) {
       {/* Sources overview */}
       <div className="space-y-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Planned Sources ({plan.sources.length})
+          {plan.sources.length > 0
+            ? `Planned Sources (${plan.sources.length})`
+            : "Sources"}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {plan.sources.map((s) => (
-            <div
-              key={s.source_id}
-              className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
-            >
-              <Database className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium font-mono capitalize">{s.provider}</p>
-                <p className="text-[10px] text-muted-foreground font-mono truncate">
-                  {s.endpoint}
-                </p>
+        {plan.sources.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {plan.sources.map((s) => (
+              <div
+                key={s.source_id}
+                className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
+              >
+                <Database className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium font-mono capitalize">{s.provider}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono truncate">
+                    {s.endpoint}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                  T{s.tier}
+                </Badge>
               </div>
-              <Badge variant="outline" className="text-[10px] font-mono shrink-0">
-                T{s.tier}
-              </Badge>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2.5 flex items-center gap-2">
+            <Database className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+            <p className="text-[11px] text-sky-400">
+              Deferred source discovery — sources will be found at resolve time
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Execution config */}
@@ -219,7 +239,7 @@ function EvidenceSnapshotPanel({ c }: { c: MarketCase }) {
 }
 
 function ChecksPanel({ c }: { c: MarketCase }) {
-  if (!c.oracle_result || c.oracle_result.checks.length === 0) {
+  if (!c.oracle_result || (c.oracle_result.checks ?? []).length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
         No checks available
@@ -236,7 +256,7 @@ function ChecksPanel({ c }: { c: MarketCase }) {
 
   return (
     <div className="space-y-2">
-      {c.oracle_result.checks.map((check) => {
+      {(c.oracle_result.checks ?? []).map((check) => {
         const cfg = iconMap[check.status];
         const Icon = cfg.icon;
         return (
@@ -268,7 +288,7 @@ function ChecksPanel({ c }: { c: MarketCase }) {
 }
 
 function ErrorsPanel({ c }: { c: MarketCase }) {
-  if (!c.oracle_result || c.oracle_result.errors.length === 0) {
+  if (!c.oracle_result || (c.oracle_result.errors ?? []).length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
         No errors recorded
@@ -314,7 +334,7 @@ export function DeepTabs({ c }: { c: MarketCase }) {
             const hasErrors =
               tab.key === "errors" &&
               c.oracle_result &&
-              c.oracle_result.errors.length > 0;
+              (c.oracle_result.errors ?? []).length > 0;
 
             return (
               <button
