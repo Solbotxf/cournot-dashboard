@@ -27,12 +27,15 @@ import { getMatchStatus } from "@/lib/types";
 import {
   ExternalLink,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   List,
   CheckCircle2,
   XCircle,
   Zap,
   Shield,
+  Loader2,
 } from "lucide-react";
 import { cn, renderText } from "@/lib/utils";
 
@@ -368,7 +371,20 @@ function sortCases(cases: MarketCase[], sortKey: SortKey): MarketCase[] {
 
 // ─── Main Table ─────────────────────────────────────────────────────────────
 
-export function CaseTableView({ cases }: { cases: MarketCase[] }) {
+interface CaseTableViewProps {
+  cases: MarketCase[];
+  // Pagination props (optional - if not provided, no pagination UI shown)
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (size: number) => void;
+    isLoading?: boolean;
+  };
+}
+
+export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [sortKey, setSortKey] = useState<SortKey>("updated");
@@ -634,6 +650,52 @@ export function CaseTableView({ cases }: { cases: MarketCase[] }) {
             </Table>
           </div>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {pagination && (
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Rows per page:</span>
+            <select
+              value={pagination.pageSize}
+              onChange={(e) => pagination.onPageSizeChange(Number(e.target.value))}
+              disabled={pagination.isLoading}
+              className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {pagination.isLoading && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+            <span className="text-sm text-muted-foreground">
+              Page {pagination.page} of {Math.ceil(pagination.total / pagination.pageSize) || 1}
+              <span className="ml-2 text-xs">({pagination.total} total)</span>
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => pagination.onPageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1 || pagination.isLoading}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => pagination.onPageChange(pagination.page + 1)}
+                disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize) || pagination.isLoading}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

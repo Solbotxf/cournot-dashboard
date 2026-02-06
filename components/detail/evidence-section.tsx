@@ -15,6 +15,8 @@ import {
   MinusCircle,
   Globe,
   FileText,
+  ExternalLink,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -182,8 +184,20 @@ export function EvidenceSection({
 
 // ─── Evidence Item Card ───────────────────────────────────────────────────
 
+function getTierColor(tier: string): string {
+  if (tier.includes("1")) return "text-emerald-400 border-emerald-500/20 bg-emerald-500/10";
+  if (tier.includes("2")) return "text-sky-400 border-sky-500/20 bg-sky-500/10";
+  if (tier.includes("3")) return "text-yellow-400 border-yellow-500/20 bg-yellow-500/10";
+  return "text-muted-foreground border-border";
+}
+
 function EvidenceItemCard({ item }: { item: EvidenceItem }) {
-  const [expanded, setExpanded] = useState(false);
+  // Start expanded if there are evidence sources to show
+  const evidenceSources = item.extracted_fields?.evidence_sources ?? [];
+  const [expanded, setExpanded] = useState(evidenceSources.length > 0);
+  const isSuccess = item.success !== false && !item.error;
+  const resolutionStatus = item.extracted_fields?.resolution_status;
+  const confidenceScore = item.extracted_fields?.confidence_score;
 
   return (
     <div className="rounded-lg border border-border/50 overflow-hidden">
@@ -194,7 +208,7 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
         <Globe
           className={cn(
             "h-4 w-4 shrink-0",
-            item.status_code === 200 ? "text-emerald-400" : "text-red-400"
+            isSuccess ? "text-emerald-400" : "text-red-400"
           )}
         />
         <div className="flex-1 min-w-0">
@@ -203,20 +217,29 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
             {item.source_uri}
           </p>
         </div>
+        {resolutionStatus && (
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] font-mono shrink-0",
+              resolutionStatus === "RESOLVED"
+                ? "text-emerald-400 border-emerald-500/20"
+                : resolutionStatus === "UNRESOLVED"
+                ? "text-yellow-400 border-yellow-500/20"
+                : "text-muted-foreground"
+            )}
+          >
+            {resolutionStatus}
+          </Badge>
+        )}
         <Badge variant="outline" className="text-[10px] font-mono shrink-0">
           Tier {item.tier}
         </Badge>
-        <Badge
-          variant="outline"
-          className={cn(
-            "text-[10px] font-mono shrink-0",
-            item.status_code === 200
-              ? "text-emerald-400 border-emerald-500/20"
-              : "text-red-400 border-red-500/20"
-          )}
-        >
-          {item.status_code}
-        </Badge>
+        {evidenceSources.length > 0 && (
+          <Badge variant="outline" className="text-[10px] font-mono shrink-0 text-violet-400 border-violet-500/20">
+            {evidenceSources.length} sources
+          </Badge>
+        )}
         <ChevronDown
           className={cn(
             "h-3 w-3 text-muted-foreground transition-transform shrink-0",
@@ -226,44 +249,142 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
       </button>
       {expanded && (
         <div className="border-t border-border/50 px-3 py-3 bg-muted/10 space-y-3">
-          {/* Parsed excerpt */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <FileText className="h-3 w-3 text-muted-foreground" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Parsed Excerpt
-              </p>
+          {/* Error message if present */}
+          {item.error && (
+            <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+              <p className="text-xs text-red-400 font-medium">{item.error}</p>
             </div>
-            <div className="rounded-lg bg-muted/30 border border-border/50 p-3">
-              <p className="text-xs text-foreground/80 leading-relaxed font-mono whitespace-pre-wrap">
-                {item.parsed_excerpt}
-              </p>
+          )}
+
+          {/* Resolution status and confidence */}
+          {(resolutionStatus || confidenceScore != null) && (
+            <div className="flex items-center gap-4 text-xs">
+              {resolutionStatus && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px]",
+                      resolutionStatus === "RESOLVED"
+                        ? "text-emerald-400 border-emerald-500/20"
+                        : "text-yellow-400 border-yellow-500/20"
+                    )}
+                  >
+                    {resolutionStatus}
+                  </Badge>
+                </div>
+              )}
+              {confidenceScore != null && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Confidence:</span>
+                  <span className="font-mono text-foreground/80">
+                    {(confidenceScore * 100).toFixed(0)}%
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
+          )}
+
+          {/* Evidence Sources */}
+          {evidenceSources.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Shield className="h-3 w-3 text-muted-foreground" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Evidence Sources ({evidenceSources.length})
+                </p>
+              </div>
+              <div className="space-y-2">
+                {evidenceSources.map((source, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                          {source.source_id}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[10px] font-medium shrink-0", getTierColor(source.credibility_tier))}
+                        >
+                          {source.credibility_tier}
+                        </Badge>
+                      </div>
+                      {source.url && (
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-sky-400 hover:text-sky-300 flex items-center gap-1 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Open
+                        </a>
+                      )}
+                    </div>
+                    {source.url && (
+                      <p className="text-[10px] text-muted-foreground font-mono truncate">
+                        {source.url}
+                      </p>
+                    )}
+                    {source.relevance_reason && (
+                      <p className="text-xs text-foreground/70 leading-relaxed">
+                        {source.relevance_reason}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Parsed excerpt (if no evidence sources or has additional content) */}
+          {item.parsed_excerpt && evidenceSources.length === 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <FileText className="h-3 w-3 text-muted-foreground" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Parsed Excerpt
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted/30 border border-border/50 p-3">
+                <p className="text-xs text-foreground/80 leading-relaxed font-mono whitespace-pre-wrap">
+                  {item.parsed_excerpt}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
               <span className="text-muted-foreground">Fetched at: </span>
               <span className="font-mono text-foreground/80">
-                {new Date(item.fetched_at).toLocaleString("en-US", {
+                {item.fetched_at ? new Date(item.fetched_at).toLocaleString("en-US", {
                   month: "short",
                   day: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
                   second: "2-digit",
                   timeZoneName: "short",
-                })}
+                }) : "—"}
               </span>
             </div>
             <div className="flex items-center gap-1">
               <span className="text-muted-foreground">Content hash: </span>
               <span className="font-mono text-foreground/70 text-[10px] truncate">
-                {item.content_hash.slice(0, 16)}...
+                {item.content_hash ? `${item.content_hash.slice(0, 16)}...` : "—"}
               </span>
-              <InlineCopyButton
-                value={item.content_hash}
-                label="Content hash"
-              />
+              {item.content_hash && (
+                <InlineCopyButton
+                  value={item.content_hash}
+                  label="Content hash"
+                />
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">

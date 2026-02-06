@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { JsonViewerPro } from "@/components/shared/json-viewer-pro";
 import { ErrorCallout } from "@/components/shared/error-callout";
-import type { MarketCase, DataRequirement, Check } from "@/lib/types";
+import type { MarketCase, DataRequirement, Check, EvidenceItem, EvidenceSource } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   FileText,
@@ -17,6 +17,9 @@ import {
   AlertTriangle,
   MinusCircle,
   Package,
+  Globe,
+  Shield,
+  ExternalLink,
 } from "lucide-react";
 import {
   Table,
@@ -145,81 +148,270 @@ function DataRequirementsTable({ reqs }: { reqs: DataRequirement[] }) {
   );
 }
 
+function getTierColor(tier: string): string {
+  if (tier.includes("1")) return "text-emerald-400 border-emerald-500/20 bg-emerald-500/10";
+  if (tier.includes("2")) return "text-sky-400 border-sky-500/20 bg-sky-500/10";
+  if (tier.includes("3")) return "text-yellow-400 border-yellow-500/20 bg-yellow-500/10";
+  return "text-muted-foreground border-border";
+}
+
+function EvidenceSourceCard({ source }: { source: EvidenceSource }) {
+  return (
+    <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+            {source.source_id}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn("text-[10px] font-medium shrink-0", getTierColor(source.credibility_tier))}
+          >
+            {source.credibility_tier}
+          </Badge>
+        </div>
+        {source.url && (
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-sky-400 hover:text-sky-300 flex items-center gap-1 shrink-0"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Open
+          </a>
+        )}
+      </div>
+      {source.url && (
+        <p className="text-[10px] text-muted-foreground font-mono break-all">
+          {source.url}
+        </p>
+      )}
+      {source.relevance_reason && (
+        <p className="text-xs text-foreground/70 leading-relaxed">
+          {source.relevance_reason}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function EvidenceItemPanel({ item }: { item: EvidenceItem }) {
+  const isSuccess = item.success !== false && !item.error;
+  const evidenceSources = item.extracted_fields?.evidence_sources ?? [];
+  const resolutionStatus = item.extracted_fields?.resolution_status;
+  const confidenceScore = item.extracted_fields?.confidence_score;
+
+  return (
+    <div className="rounded-lg border border-border/50 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-muted/20">
+        <Globe
+          className={cn(
+            "h-4 w-4 shrink-0",
+            isSuccess ? "text-emerald-400" : "text-red-400"
+          )}
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium truncate">{item.source_name}</p>
+          <p className="text-[10px] text-muted-foreground font-mono truncate">
+            {item.source_uri}
+          </p>
+        </div>
+        {resolutionStatus && (
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] font-mono shrink-0",
+              resolutionStatus === "RESOLVED"
+                ? "text-emerald-400 border-emerald-500/20"
+                : resolutionStatus === "UNRESOLVED"
+                ? "text-yellow-400 border-yellow-500/20"
+                : "text-muted-foreground"
+            )}
+          >
+            {resolutionStatus}
+          </Badge>
+        )}
+        <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+          Tier {item.tier}
+        </Badge>
+      </div>
+
+      {/* Content */}
+      <div className="px-3 py-3 space-y-3">
+        {/* Error message if present */}
+        {item.error && (
+          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+            <p className="text-xs text-red-400 font-medium">{item.error}</p>
+          </div>
+        )}
+
+        {/* Resolution status and confidence */}
+        {(resolutionStatus || confidenceScore != null) && (
+          <div className="flex items-center gap-4 text-xs">
+            {resolutionStatus && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px]",
+                    resolutionStatus === "RESOLVED"
+                      ? "text-emerald-400 border-emerald-500/20"
+                      : "text-yellow-400 border-yellow-500/20"
+                  )}
+                >
+                  {resolutionStatus}
+                </Badge>
+              </div>
+            )}
+            {confidenceScore != null && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Confidence:</span>
+                <span className="font-mono text-foreground/80">
+                  {(confidenceScore * 100).toFixed(0)}%
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Evidence Sources */}
+        {evidenceSources.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Shield className="h-3 w-3 text-muted-foreground" />
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Evidence Sources ({evidenceSources.length})
+              </p>
+            </div>
+            <div className="space-y-2">
+              {evidenceSources.map((source, idx) => (
+                <EvidenceSourceCard key={idx} source={source} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Metadata */}
+        <div className="flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground pt-2 border-t border-border/30">
+          <span className="font-mono">{item.evidence_id}</span>
+          {item.fetched_at && (
+            <span>
+              Fetched:{" "}
+              <span className="font-mono text-foreground/70">
+                {new Date(item.fetched_at).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </span>
+          )}
+          {item.content_hash && (
+            <span className="font-mono truncate max-w-[150px]">
+              Hash: {item.content_hash.slice(0, 12)}...
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EvidenceSnapshotPanel({ c }: { c: MarketCase }) {
   const plan = c.parse_result.tool_plan;
   const oracle = c.oracle_result;
-
-  if (!plan) {
-    return (
-      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-        No tool plan available
-      </div>
-    );
-  }
+  const evidenceItems = oracle?.evidence_items ?? [];
 
   return (
-    <div className="space-y-4">
-      {/* Sources overview */}
-      <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {plan.sources.length > 0
-            ? `Planned Sources (${plan.sources.length})`
-            : "Sources"}
-        </p>
-        {plan.sources.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {plan.sources.map((s) => (
-              <div
-                key={s.source_id}
-                className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
-              >
-                <Database className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium font-mono capitalize">{s.provider}</p>
-                  <p className="text-[10px] text-muted-foreground font-mono truncate">
-                    {s.endpoint}
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-[10px] font-mono shrink-0">
-                  T{s.tier}
-                </Badge>
-              </div>
+    <div className="space-y-6">
+      {/* Evidence Items (if available from resolve) */}
+      {evidenceItems.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Evidence Items ({evidenceItems.length})
+          </p>
+          <div className="space-y-3">
+            {evidenceItems.map((item) => (
+              <EvidenceItemPanel key={item.evidence_id} item={item} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2.5 flex items-center gap-2">
-            <Database className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-            <p className="text-[11px] text-sky-400">
-              Deferred source discovery — sources will be found at resolve time
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Execution config */}
-      <div className="flex flex-wrap items-center gap-4 text-xs rounded-lg border border-border/50 bg-muted/10 px-4 py-3">
-        <div>
-          <span className="text-muted-foreground">Min Tier:</span>{" "}
-          <span className="font-mono font-medium">T{plan.min_provenance_tier}</span>
+      {/* Tool Plan Sources (planned sources) */}
+      {plan && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {plan.sources.length > 0
+              ? `Planned Sources (${plan.sources.length})`
+              : "Sources"}
+          </p>
+          {plan.sources.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {plan.sources.map((s) => (
+                <div
+                  key={s.source_id}
+                  className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
+                >
+                  <Database className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium font-mono capitalize">{s.provider}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono truncate">
+                      {s.endpoint}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                    T{s.tier}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2.5 flex items-center gap-2">
+              <Database className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+              <p className="text-[11px] text-sky-400">
+                Deferred source discovery — sources will be found at resolve time
+              </p>
+            </div>
+          )}
+
+          {/* Execution config */}
+          <div className="flex flex-wrap items-center gap-4 text-xs rounded-lg border border-border/50 bg-muted/10 px-4 py-3">
+            <div>
+              <span className="text-muted-foreground">Min Tier:</span>{" "}
+              <span className="font-mono font-medium">T{plan.min_provenance_tier}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Fallbacks:</span>{" "}
+              <span className={plan.allow_fallbacks ? "text-emerald-400" : "text-red-400"}>
+                {plan.allow_fallbacks ? "Enabled" : "Disabled"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Requirements:</span>{" "}
+              {plan.requirements.map((r) => (
+                <Badge key={r} variant="outline" className="text-[10px] font-mono ml-1">
+                  {r}
+                </Badge>
+              ))}
+            </div>
+          </div>
         </div>
-        <div>
-          <span className="text-muted-foreground">Fallbacks:</span>{" "}
-          <span className={plan.allow_fallbacks ? "text-emerald-400" : "text-red-400"}>
-            {plan.allow_fallbacks ? "Enabled" : "Disabled"}
-          </span>
+      )}
+
+      {/* No plan available */}
+      {!plan && evidenceItems.length === 0 && (
+        <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+          No tool plan or evidence available
         </div>
-        <div>
-          <span className="text-muted-foreground">Requirements:</span>{" "}
-          {plan.requirements.map((r) => (
-            <Badge key={r} variant="outline" className="text-[10px] font-mono ml-1">
-              {r}
-            </Badge>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Duration if available */}
-      {oracle && (
+      {oracle && oracle.executed_at && (
         <div className="text-xs text-muted-foreground">
           Executed in <span className="font-mono text-foreground">{oracle.duration_ms}ms</span>
           {" "}on{" "}

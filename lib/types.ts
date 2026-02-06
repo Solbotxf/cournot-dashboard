@@ -120,6 +120,19 @@ export interface Check {
   requirement_id?: string;
 }
 
+export interface EvidenceSource {
+  source_id: string;
+  url: string;
+  credibility_tier: string;
+  relevance_reason: string;
+}
+
+export interface ExtractedFields {
+  confidence_score?: number;
+  resolution_status?: string;
+  evidence_sources?: EvidenceSource[];
+}
+
 export interface EvidenceItem {
   evidence_id: string;
   source_uri: string;
@@ -129,6 +142,9 @@ export interface EvidenceItem {
   content_hash: string;
   parsed_excerpt: string;
   status_code: number;
+  success?: boolean;
+  error?: string | null;
+  extracted_fields?: ExtractedFields;
 }
 
 export type ReasoningStepType =

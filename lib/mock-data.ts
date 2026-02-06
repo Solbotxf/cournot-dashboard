@@ -1,1499 +1,2138 @@
 import type { MarketCase } from "./types";
 
 export const mockCases: MarketCase[] = [
-  // ── 0. Resolved MATCH – US Government Shutdown ─────────────────────────
   {
-    market_id: "mk_usgov_shutdown_jan26",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/us-gov-shutdown-jan-2026",
-      title: "US Government Shutdown Saturday?",
-      question:
-        "Will the U.S. Office of Personnel Management (OPM) announce another federal government shutdown due to a lapse in appropriations by January 31, 2026, 11:59 PM ET?",
-      resolution_deadline: "2026-02-01T04:59:00Z",
-      resolution_window: {
-        start: "2026-02-01T00:00:00Z",
-        end: "2026-02-02T00:00:00Z",
+    "market_id": "mk_trump_x_greenland_deal_signed_by_january_31",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/trump-x-greenland-deal-signed-by-january-31",
+      "title": "Trump x Greenland deal signed by January 31?",
+      "question": "This market will resolve to “Yes” if both Denmark and the United States sign a deal, treaty, or similar international agreement of any kind relating to Greenland by January 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.\n\nAny U.S.–Danish agreement relating to Greenland will qualify, regardless of subject matter, including but not limited to sovereignty, governance, security arrangements, or access to natural resources.\n\nExamples of qualifying deals include but are not limited to a treaty that makes any portion of Greenland a U.S. territory or possession (even if the handover date for such territory or possession is later); or, a Guantánamo-style arrangement treaty establishing a defined zone in Greenland under exclusive or primary U.S. jurisdiction and control, where Denmark and Greenland’s ordinary legal authority does not apply except by U.S. permission; or agreements permitting additional U.S. troop stationing, basing access, or resource extraction rights in Greenland.\n\nThis market will resolve to “Yes” only if a qualifying agreement is formally signed by authorized representatives of both Denmark and the United States. Official announcements, statements of intent, or declarations that an agreement has been reached will not suffice unless accompanied by signatures from both sides. Whether or not a qualifying deal is later passed by the respective parliaments or enters into force will not affect this market’s resolution. Signaling from Greenland’s population will not be considered.\n\nAnnouncements, negotiations, proposals, frameworks, or understandings that are not formally signed by both parties will not qualify. Any qualifying U.S. jurisdiction, control, basing rights, or access arrangements in Greenland that existed at market creation will not count as new qualifying agreements.\n\nThe primary resolution source for this market will be official information from the governments of the United States and Denmark; however, a consensus of credible reporting may also be used.",
+      "resolution_deadline": "2026-02-02T04:59:00Z",
+      "resolution_window": {
+        "start": "2026-01-31T04:59:00Z",
+        "end": "2026-02-02T04:59:00Z"
       },
-      status: "RESOLVED",
-      official_outcome: "YES",
-      official_resolved_at: "2026-01-31T05:01:00Z",
-      last_updated_at: "2026-01-31T05:05:00Z",
+      "status": "RESOLVED",
+      "official_outcome": "NO",
+      "official_resolved_at": "2026-01-31T00:00:00Z",
+      "last_updated_at": "2026-01-31T00:00:00Z"
     },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "prediction_resolution",
-        market: {
-          question:
-            "Will the U.S. Office of Personnel Management (OPM) announce another federal government shutdown due to a lapse in appropriations by January 31, 2026, 11:59 PM ET?",
-          event_definition:
-            "The U.S. Office of Personnel Management (OPM) announces a federal government shutdown due to a lapse in appropriations by January 31, 2026, 11:59 PM ET.",
-          timezone: "America/New_York",
-          resolution_deadline: "2026-02-01T04:59:00Z",
-          resolution_window: {
-            start: "2026-02-01T00:00:00Z",
-            end: "2026-02-02T00:00:00Z",
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Title: Trump x Greenland deal signed by January 31?",
+          "event_definition": "A formal agreement signed by authorized representatives of both Denmark and the United States relating to Greenland by January 31, 2026, 11:59 PM ET.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-02T04:59:00Z",
+          "resolution_window": {
+            "start": "2026-01-31T04:59:00Z",
+            "end": "2026-02-02T04:59:00Z"
           },
-          resolution_rules: [
+          "resolution_rules": [
             {
-              rule_id: "R_VALIDITY",
-              description: "Check if evidence is sufficient",
-              priority: 100,
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
             },
             {
-              rule_id: "R_CONFLICT",
-              description: "Handle conflicting evidence",
-              priority: 90,
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
             },
             {
-              rule_id: "R_BINARY_DECISION",
-              description: "Map evidence to YES/NO",
-              priority: 80,
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
             },
             {
-              rule_id: "R_CONFIDENCE",
-              description: "Assign confidence score",
-              priority: 70,
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
             },
             {
-              rule_id: "R_INVALID_FALLBACK",
-              description: "Return INVALID if cannot resolve",
-              priority: 0,
-            },
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
           ],
-          allowed_sources: ["opm"],
-          min_provenance_tier: 0,
-          dispute_policy: {
-            dispute_window_seconds: 86400,
-            allow_challenges: true,
+          "allowed_sources": [
+            "us_gov",
+            "dk_gov",
+            "credible_media"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
           },
-          metadata: { category: "government", region: "US" },
+          "metadata": {}
         },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
+        "prediction_semantics": "{\"target_entity\": \"U.S.\\u2013Danish agreement relating to Greenland\", \"predicate\": \"signed by authorized representatives of both Denmark and the United States\", \"threshold\": null, \"timeframe\": \"by January 31, 2026, 11:59 PM ET\"}",
+        "data_requirements": [
           {
-            requirement_id: "req_001",
-            description:
-              "Announcement of a federal government shutdown by OPM",
-            source_targets: [
+            "requirement_id": "req_001",
+            "description": "Official signed agreement between Denmark and the United States relating to Greenland",
+            "source_targets": [],
+            "expected_fields": [
+              "agreement_text",
+              "signatory_names",
+              "signatory_titles",
+              "signing_date"
+            ],
+            "selection_policy": {
+              "strategy": "multi_source_quorum",
+              "quorum": 1
+            },
+            "deferred_source_discovery": true
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The agreement must be formally signed by authorized representatives of both Denmark and the United States.",
+            "Official announcements or statements of intent without signatures do not qualify.",
+            "Existing agreements at market creation do not count."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f4b2c1d",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": {
+      "market_id": "mk_trump_x_greenland_deal_signed_by_january_31",
+      "outcome": "NO",
+      "confidence": 0.65,
+      "por_root": "0x489040b2411017604c29d1de6d9d21cb74f7d704dba9bd339963c222329fc36e",
+      "prompt_spec_hash": "0x766d0ea9203186b4528a0e63c9f79133c336785fae432d51355a1bb3b490ffe9",
+      "evidence_root": "0xcdd6fcb66f4f4507ff867278d8a4a304aa3dd172346d93ebfbdef380bcd9f14c",
+      "reasoning_root": "0x0e7509fb4db4639a0f19d4d1e20fbef1b349d83a1a4102baaca7cb459469bf52",
+      "ok": true,
+      "verification_ok": true,
+      "execution_mode": "dry_run",
+      "executed_at": "2026-01-31T00:00:43Z",
+      "duration_ms": 4192,
+      "checks": [],
+      "errors": [],
+      "evidence_summary": "The evidence consists of historical agreements, recent developments, and Trump initiatives related to US-Denmark agreements on Greenland. No official agreement was signed by January 31, 2025.",
+      "reasoning_summary": "The evidence was analyzed to determine if a formal agreement was signed by the specified date. The evidence indicates no such agreement was signed, leading to a conclusion of NO.",
+      "justification": "Market: Title: Trump x Greenland deal signed by January 31?\nOutcome: NO\nConfidence: 65%\nRule Applied: R_BINARY_DECISION\n\nEvidence Summary:\nThe evidence consists of historical agreements, recent developments, and Trump initiatives related to US-Denmark agreements on Greenland. No official agreement was signed by January 31, 2025.\n\nReasoning:\nThe evidence was analyzed to determine if a formal agreement was signed by the specified date. The evidence indicates no such agreement was signed, leading to a conclusion of NO.\n\nKey Conclusions:\n  1. Evidence is valid and sufficient.\n  2. NO",
+      "evidence_items": [
+        {
+          "evidence_id": "65a6ecc19205fb5f",
+          "source_uri": "serper:search",
+          "source_name": "discover",
+          "tier": 2,
+          "fetched_at": "2026-01-01T00:00:00Z",
+          "content_hash": "69776967ca74a252b3a0428baef8aaa4150fc57647ff9062603c2fbf24981cf0",
+          "parsed_excerpt": "{\"historical_agreements\": [{\"year\": 1951, \"description\": \"Defense of Greenland agreement signed April 9, 1951, allowing US military presence\"}, {\"year\": 2004, \"description\": \"Igaliku Agreement signed August 6, 2004, amending defense arrangements\"}], \"recent_developments\": [{\"date\": \"2025-04-11\", \"description\": \"Denmark moving towards ratifying a new US defense deal, but not finalized or signed by Jan 31, 2025\"}, {\"date\": \"2026-01-28\", \"description\": \"Diplomatic talks started to ease tensions, no",
+          "status_code": 200
+        }
+      ],
+      "reasoning_steps": [
+        {
+          "step_id": "step_001",
+          "step_type": "evidence_analysis",
+          "description": "Analyzing the provided evidence for any signed agreement by the deadline.",
+          "conclusion": "No agreement signed by January 31, 2025.",
+          "confidence_delta": 0.0,
+          "depends_on": []
+        },
+        {
+          "step_id": "step_002",
+          "step_type": "rule_application",
+          "description": "Applying R_VALIDITY to check if the evidence is sufficient.",
+          "conclusion": "Evidence is valid and sufficient.",
+          "confidence_delta": 0.0,
+          "depends_on": []
+        },
+        {
+          "step_id": "step_003",
+          "step_type": "rule_application",
+          "description": "Applying R_BINARY_DECISION to map evidence to a YES/NO outcome.",
+          "conclusion": "NO",
+          "confidence_delta": 0.0,
+          "depends_on": []
+        },
+        {
+          "step_id": "step_004",
+          "step_type": "confidence_assessment",
+          "description": "Assessing confidence in the conclusion based on evidence quality.",
+          "conclusion": "Confidence increased to 0.6",
+          "confidence_delta": 0.1,
+          "depends_on": []
+        }
+      ],
+      "confidence_breakdown": {
+        "base": 0.6,
+        "adjustments": [
+          {
+            "reason": "High provenance sources",
+            "delta": 0.05
+          }
+        ],
+        "final": 0.65
+      },
+      "llm_review": {
+        "reasoning_valid": true,
+        "issues": [],
+        "confidence_adjustments": [
+          {
+            "reason": "High provenance sources",
+            "delta": 0.05
+          }
+        ],
+        "final_justification": "The evidence clearly indicates that no formal agreement was signed by the specified deadline. The reasoning is sound and the confidence is adjusted upwards due to the reliability of the sources."
+      }
+    }
+  },
+  {
+    "market_id": "mk_tsla_quarterly_earnings_nongaap_eps_01_28_2026_0pt45",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/tsla-quarterly-earnings-nongaap-eps-01-28-2026-0pt45",
+      "title": "Will Tesla (TSLA) beat quarterly earnings?",
+      "question": "As of market creation, Tesla is estimated to release earnings on January 28, 2026. The Street consensus estimate for Tesla’s non-GAAP EPS for the relevant quarter is $0.45 as of market creation. This market will resolve to \"Yes\" if Tesla reports non-GAAP EPS greater than $0.45 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Tesla releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-02T22:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-28T22:00:00Z",
+        "end": "2026-02-01T22:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-28T22:00:00Z",
+      "last_updated_at": "2026-01-28T22:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Tesla (TSLA) beat quarterly earnings?",
+          "event_definition": "Tesla reports non-GAAP EPS greater than $0.45 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-02T22:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-28T22:00:00Z",
+            "end": "2026-02-01T22:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Tesla (TSLA)\", \"predicate\": \"non-GAAP EPS > $0.45\", \"threshold\": \"0.45\", \"timeframe\": \"2026-01-28\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Fetch Tesla's non-GAAP EPS from the company's official earnings documents or SeekingAlpha.",
+            "source_targets": [
               {
-                uri: "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
-                provider: "opm",
+                "uri": "https://ir.tesla.com/financial-information/quarterly-results",
+                "provider": ""
               },
+              {
+                "uri": "https://seekingalpha.com/symbol/TSLA/earnings",
+                "provider": ""
+              }
             ],
-            expected_fields: ["shutdown_announcement"],
-            selection_policy: { strategy: "single_best", quorum: 1 },
-          },
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
         ],
-        output_schema_ref: "core.schemas.verdict.DeterministicVerdict",
-        forbidden_behaviors: [],
-        created_at: null,
-        tool_plan: "plan_mk_1234567890",
-        extra: {
-          strict_mode: true,
-          compiler: "llm",
-          assumptions: [
-            "Partial shutdowns count as shutdowns.",
-            "Announcements of office closures due to holidays or inclement weather do not qualify as a shutdown.",
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The earnings release will occur on or before 2026-03-14.",
+            "Non-GAAP EPS figures are available from the specified sources."
           ],
-        },
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
       },
-      tool_plan: {
-        plan_id: "plan_mk_1234567890",
-        requirements: ["req_001"],
-        sources: [
-          {
-            source_id: "src_opm",
-            provider: "opm",
-            endpoint:
-              "/policy-data-oversight/snow-dismissal-procedures/current-status/",
-            tier: 1,
-          },
+      "tool_plan": {
+        "plan_id": "plan_mk_1234567890abcdef",
+        "requirements": [
+          "req_001"
         ],
-        min_provenance_tier: 0,
-        allow_fallbacks: true,
-        extra: {},
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
       },
-      error: null,
-      metadata: {
-        compiler: "llm",
-        strict_mode: true,
-        question_type: "event_binary",
-      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
     },
-    oracle_result: {
-      market_id: "mk_usgov_shutdown_jan26",
-      outcome: "YES",
-      confidence: 0.75,
-      por_root:
-        "0x4f0042f60434fba81320be499fb2c4dd4dafd9e337bc79bff242ed65317f4138",
-      prompt_spec_hash:
-        "0xe478784b51766922010b94a0be30a4e479c9d416cbcb3c414fcdb9c8a8f7c535",
-      evidence_root:
-        "0x1227cbda93373859450e53526c2ceb4a79e34478e4dd62a30adfa81a45c42c9a",
-      reasoning_root:
-        "0xa773c4d1c1a5b1ded68b3aa9743f541f9bc6cd80a7d37871c05d18e00df38540",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2026-01-31T05:00:00Z",
-      duration_ms: 3200,
-      checks: [
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_meta_quarterly_earnings_gaap_eps_01_28_2026_8pt19",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/meta-quarterly-earnings-gaap-eps-01-28-2026-8pt19",
+      "title": "Will Meta Platforms (META) beat quarterly earnings?",
+      "question": "As of market creation, Meta Platforms is estimated to release earnings on January 28, 2026. The Street consensus estimate for Meta Platforms's GAAP EPS for the relevant quarter is $8.19 as of market creation. This market will resolve to \"Yes\" if Meta Platforms reports GAAP EPS greater than $8.19 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the GAAP EPS listed in the company’s official earnings documents. \n\nIf Meta Platforms releases earnings without GAAP EPS, then the market will resolve according to the GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve to “No”.\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for GAAP EPS. \nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless this is not published, in which case it refers to basic GAAP EPS.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-03-14T22:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-28T22:00:00Z",
+        "end": "2026-02-01T22:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-28T22:00:00Z",
+      "last_updated_at": "2026-01-28T22:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Meta Platforms (META) beat quarterly earnings?",
+          "event_definition": "Meta Platforms reports GAAP EPS greater than $8.19 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-03-14T22:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-28T22:00:00Z",
+            "end": "2026-02-01T22:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Meta Platforms (META)\", \"predicate\": \"GAAP EPS > $8.19\", \"threshold\": \"8.19\", \"timeframe\": \"2026-01-28\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "GAAP EPS from Meta Platforms' official earnings documents or SeekingAlpha if not available.",
+            "source_targets": [
+              {
+                "uri": "https://investor.fb.com/financials/default.aspx",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/META/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "GAAP EPS refers to diluted GAAP EPS unless not published, then basic GAAP EPS.",
+            "Figures are rounded to the nearest cent using standard rounding.",
+            "IFRS EPS is treated as GAAP EPS.",
+            "Figures are expressed in USD unless otherwise indicated.",
+            "Market refers to shares traded in the U.S. on U.S. stock exchanges."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f4b2c9e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_ibm_quarterly_earnings_nongaap_eps_01_28_2026_4pt29",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/ibm-quarterly-earnings-nongaap-eps-01-28-2026-4pt29",
+      "title": "Will International Business Machines (IBM) beat quarterly earnings?",
+      "question": "As of market creation, International Business Machines is estimated to release earnings on January 28, 2026. The Street consensus estimate for International Business Machines’s non-GAAP EPS for the relevant quarter is $4.29 as of market creation. This market will resolve to \"Yes\" if International Business Machines reports non-GAAP EPS greater than $4.29 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf International Business Machines releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-02T22:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-28T22:00:00Z",
+        "end": "2026-02-01T22:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-28T22:00:00Z",
+      "last_updated_at": "2026-01-28T22:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will International Business Machines (IBM) beat quarterly earnings?",
+          "event_definition": "IBM's non-GAAP EPS for the relevant quarter is greater than $4.29 as reported in the company's official earnings documents or SeekingAlpha within 96 hours of market close on the earnings announcement day.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-02T22:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-28T22:00:00Z",
+            "end": "2026-02-01T22:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"International Business Machines (IBM)\", \"predicate\": \"non-GAAP EPS > $4.29\", \"threshold\": \"4.29\", \"timeframe\": \"2026-01-28\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "non-GAAP EPS from IBM's official earnings documents or SeekingAlpha",
+            "source_targets": [
+              {
+                "uri": "https://www.ibm.com/investor/earnings",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/IBM/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The primary headline non-GAAP EPS number is used if multiple versions are published.",
+            "Figures are rounded to the nearest cent using standard rounding.",
+            "If no earnings are released within 45 days of the estimated date, the market resolves to NO."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_1f3b9c8e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_t_quarterly_earnings_nongaap_eps_01_28_2026_0pt47",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/t-quarterly-earnings-nongaap-eps-01-28-2026-0pt47",
+      "title": "Will AT&T (T) beat quarterly earnings?",
+      "question": "As of market creation, AT&T is estimated to release earnings on January 28, 2026. The Street consensus estimate for AT&T’s non-GAAP EPS for the relevant quarter is $0.47 as of market creation. This market will resolve to \"Yes\" if AT&T reports non-GAAP EPS greater than $0.47 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf AT&T releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-01T14:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-28T14:00:00Z",
+        "end": "2026-02-01T14:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-28T14:00:00Z",
+      "last_updated_at": "2026-01-28T14:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will AT&T (T) beat quarterly earnings?",
+          "event_definition": "AT&T reports non-GAAP EPS greater than $0.47 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-01T14:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-28T14:00:00Z",
+            "end": "2026-02-01T14:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"AT&T (T)\", \"predicate\": \"non-GAAP EPS > $0.47\", \"threshold\": \"0.47\", \"timeframe\": \"Next quarterly earnings release on or before 2026-03-13\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "AT&T's non-GAAP EPS for the relevant quarter",
+            "source_targets": [
+              {
+                "uri": "https://www.att.com/investors/financial-reports/earnings.html",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/T/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "AT&T will release earnings on or before 2026-03-13",
+            "Figures are expressed in USD",
+            "Non-GAAP EPS refers to the primary headline number, typically diluted"
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_1234567890abcdef",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_v_quarterly_earnings_nongaap_eps_01_29_2026_3pt14",
+    "source": {
+      "platform": "kalshi",
+      "event_url": "https://kalshi.com/markets/v-quarterly-earnings-nongaap-eps-01-29-2026-3pt14",
+      "title": "Will Visa (V) beat quarterly earnings?",
+      "question": "As of market creation, Visa is estimated to release earnings on January 29, 2026. The Street consensus estimate for Visa’s non-GAAP EPS for the relevant quarter is $3.14 as of market creation. This market will resolve to \"Yes\" if Visa reports non-GAAP EPS greater than $3.14 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Visa releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-03-14T22:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-29T22:00:00Z",
+        "end": "2026-02-02T22:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-29T22:00:00Z",
+      "last_updated_at": "2026-01-29T22:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Visa (V) beat quarterly earnings?",
+          "event_definition": "Visa's non-GAAP EPS for the relevant quarter is greater than $3.14 as reported in the company's official earnings documents or SeekingAlpha within 96 hours of the earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-03-14T22:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-29T22:00:00Z",
+            "end": "2026-02-02T22:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Visa Inc.\", \"predicate\": \"non-GAAP EPS > $3.14\", \"threshold\": \"3.14\", \"timeframe\": \"2026-01-29T22:00:00Z\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Fetch non-GAAP EPS from Visa's official earnings documents or SeekingAlpha.",
+            "source_targets": [
+              {
+                "uri": "https://investor.visa.com/financial-information/quarterly-earnings/default.aspx",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/V/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The non-GAAP EPS figure is available in the company's official earnings documents or SeekingAlpha within 96 hours of the earnings release.",
+            "If non-GAAP EPS is not available, GAAP EPS will be used for resolution.",
+            "Figures are rounded to the nearest cent using standard rounding."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_visa_quarterly_earnings_2026",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_ma_quarterly_earnings_nongaap_eps_01_29_2026_4pt24",
+    "source": {
+      "platform": "kalshi",
+      "event_url": "https://kalshi.com/markets/ma-quarterly-earnings-nongaap-eps-01-29-2026-4pt24",
+      "title": "Will Mastercard (MA) beat quarterly earnings?",
+      "question": "As of market creation, Mastercard is estimated to release earnings on January 29, 2026. The Street consensus estimate for Mastercard’s non-GAAP EPS for the relevant quarter is $4.24 as of market creation. This market will resolve to \"Yes\" if Mastercard reports non-GAAP EPS greater than $4.24 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Mastercard releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-02T21:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-29T14:00:00Z",
+        "end": "2026-02-02T21:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-29T14:00:00Z",
+      "last_updated_at": "2026-01-29T14:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Mastercard (MA) beat quarterly earnings?",
+          "event_definition": "Mastercard reports non-GAAP EPS greater than $4.24 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-02T21:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-29T14:00:00Z",
+            "end": "2026-02-02T21:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Mastercard (MA)\", \"predicate\": \"non-GAAP EPS > $4.24\", \"threshold\": \"4.24\", \"timeframe\": \"Next quarterly earnings release on or before 2026-03-14\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Mastercard's non-GAAP EPS for the relevant quarter",
+            "source_targets": [
+              {
+                "uri": "https://investor.mastercard.com/financials/quarterly-results/default.aspx",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/MA/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "Mastercard will release earnings on or before 2026-03-14.",
+            "Figures are rounded to the nearest cent using standard rounding.",
+            "IFRS EPS is treated as GAAP EPS.",
+            "The market refers to shares traded on U.S. stock exchanges."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f5c9b8e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_vz_quarterly_earnings_nongaap_eps_01_30_2026_1pt05",
+    "source": {
+      "platform": "melee",
+      "event_url": "https://melee.xyz/markets/vz-quarterly-earnings-nongaap-eps-01-30-2026-1pt05",
+      "title": "Will Verizon Communications (VZ) beat quarterly earnings?",
+      "question": "As of market creation, Verizon Communications is estimated to release earnings on January 30, 2026. The Street consensus estimate for Verizon Communications’s non-GAAP EPS for the relevant quarter is $1.05 as of market creation. This market will resolve to \"Yes\" if Verizon Communications reports non-GAAP EPS greater than $1.05 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Verizon Communications releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-03T22:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-30T22:00:00Z",
+        "end": "2026-02-03T22:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-30T22:00:00Z",
+      "last_updated_at": "2026-01-30T22:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Verizon Communications (VZ) beat quarterly earnings?",
+          "event_definition": "Verizon Communications reports non-GAAP EPS greater than $1.05 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-03T22:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-30T22:00:00Z",
+            "end": "2026-02-03T22:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "verizon_official",
+            "seekingalpha"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Verizon Communications (VZ)\", \"predicate\": \"non-GAAP EPS > $1.05\", \"threshold\": \"1.05\", \"timeframe\": \"2026-01-30\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "non-GAAP EPS from Verizon's official earnings documents or SeekingAlpha",
+            "source_targets": [
+              {
+                "uri": "https://www.verizon.com/about/investors/quarterly-reports",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/VZ/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "Earnings are released by Verizon Communications within 45 days of the estimated date.",
+            "Figures are rounded to the nearest cent using standard rounding.",
+            "IFRS EPS is treated as GAAP EPS.",
+            "For ADR/ADS, the market refers to shares traded on U.S. stock exchanges."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f2b1c9e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_cvx_quarterly_earnings_nongaap_eps_01_30_2026_1pt48",
+    "source": {
+      "platform": "myriad",
+      "event_url": "https://myriad.markets/markets/cvx-quarterly-earnings-nongaap-eps-01-30-2026-1pt48",
+      "title": "Will Chevron (CVX) beat quarterly earnings?",
+      "question": "As of market creation, Chevron is estimated to release earnings on January 30, 2026. The Street consensus estimate for Chevron’s non-GAAP EPS for the relevant quarter is $1.48 as of market creation. This market will resolve to \"Yes\" if Chevron reports non-GAAP EPS greater than $1.48 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Chevron releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-03T21:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-30T14:00:00Z",
+        "end": "2026-02-03T21:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-30T14:00:00Z",
+      "last_updated_at": "2026-01-30T14:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Chevron (CVX) beat quarterly earnings?",
+          "event_definition": "Chevron's non-GAAP EPS for the relevant quarter is greater than $1.48 as reported in the company's official earnings documents or SeekingAlpha.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-03T21:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-30T14:00:00Z",
+            "end": "2026-02-03T21:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Chevron (CVX)\", \"predicate\": \"non-GAAP EPS > $1.48\", \"threshold\": \"1.48\", \"timeframe\": \"Chevron's next quarterly earnings release on or before 2026-03-15\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Chevron's non-GAAP EPS for the relevant quarter",
+            "source_targets": [
+              {
+                "uri": "https://www.chevron.com/investors/financial-information",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/CVX/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "Chevron will release earnings on or before 2026-03-15.",
+            "Non-GAAP EPS figures are available in the company's official earnings documents or SeekingAlpha."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f2b1c9e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_xom_quarterly_earnings_nongaap_eps_01_30_2026_1pt69",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/xom-quarterly-earnings-nongaap-eps-01-30-2026-1pt69",
+      "title": "Will Exxon Mobil (XOM) beat quarterly earnings?",
+      "question": "As of market creation, Exxon Mobil is estimated to release earnings on January 30, 2026. The Street consensus estimate for Exxon Mobil’s non-GAAP EPS for the relevant quarter is $1.69 as of market creation. This market will resolve to \"Yes\" if Exxon Mobil reports non-GAAP EPS greater than $1.69 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Exxon Mobil releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-03T14:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-30T14:00:00Z",
+        "end": "2026-02-03T14:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-01-30T14:00:00Z",
+      "last_updated_at": "2026-01-30T14:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Exxon Mobil (XOM) beat quarterly earnings?",
+          "event_definition": "Exxon Mobil reports non-GAAP EPS greater than $1.69 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-03T14:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-30T14:00:00Z",
+            "end": "2026-02-03T14:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "web"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Exxon Mobil (XOM)\", \"predicate\": \"non-GAAP EPS > $1.69\", \"threshold\": \"1.69\", \"timeframe\": \"Earnings release on or before 2026-03-15\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Fetch non-GAAP EPS from Exxon Mobil's official earnings documents or SeekingAlpha.",
+            "source_targets": [
+              {
+                "uri": "https://corporate.exxonmobil.com/Investors/Financial-Reports",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/XOM/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "Earnings release will occur on or before 2026-03-15.",
+            "Non-GAAP EPS figures are available from the specified sources."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f2b1c9e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
+          {
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
+        ],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": null
+  },
+  {
+    "market_id": "mk_will_trump_attend_ufc_325",
+    "source": {
+      "platform": "polymarket",
+      "event_url": "https://polymarket.com/markets/will-trump-attend-ufc-325",
+      "title": "Will Trump attend UFC 325?",
+      "question": "The UFC 325: Volkanovski vs. Lopes 2 event is scheduled for February 1, 2026.\n\nThis market will resolve to \"Yes\" if Donald Trump attends UFC 325. Otherwise, this market will resolve to \"No\".\n\nIf the event is canceled or postponed beyond February 3, 2026, 11:59 PM ET, this market will resolve to \"No\".\n\nAttending the event is defined as being in physical attendance during any part of the event.\n\nThe resolution source will be a consensus of credible reporting.",
+      "resolution_deadline": "2026-02-04T23:59:59Z",
+      "resolution_window": {
+        "start": "2026-02-01T00:00:00Z",
+        "end": "2026-02-03T23:59:59Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "NO",
+      "official_resolved_at": "2026-02-01T00:00:00Z",
+      "last_updated_at": "2026-02-01T00:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Trump attend UFC 325?",
+          "event_definition": "Donald Trump is in physical attendance at UFC 325: Volkanovski vs. Lopes 2 event on February 1, 2026.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-04T23:59:59Z",
+          "resolution_window": {
+            "start": "2026-02-01T00:00:00Z",
+            "end": "2026-02-03T23:59:59Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "news"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Donald Trump\", \"predicate\": \"is in physical attendance at UFC 325\", \"threshold\": null, \"timeframe\": \"2026-02-01T00:00:00Z to 2026-02-01T23:59:59Z\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Consensus of credible reporting on Donald Trump's attendance at UFC 325",
+            "source_targets": [],
+            "expected_fields": [
+              "headline",
+              "content",
+              "source"
+            ],
+            "selection_policy": {
+              "strategy": "multi_source_quorum",
+              "quorum": 2
+            },
+            "deferred_source_discovery": true
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The event is not canceled or postponed beyond February 3, 2026, 11:59 PM ET."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_1234567890abcdef",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": {
+      "market_id": "mk_will_trump_attend_ufc_325",
+      "outcome": "NO",
+      "confidence": 0.75,
+      "por_root": "0x7c9c8784efd4eebb2b99f67a4048454b1b3d035ca54d20dc9180a02e3f0bc024",
+      "prompt_spec_hash": "0x83b64ae6cf766eb5a2ba79f4386c6f8ad6f19c64732e5d54796dda0e8c47db46",
+      "evidence_root": "0xcdd6fcb66f4f4507ff867278d8a4a304aa3dd172346d93ebfbdef380bcd9f14c",
+      "reasoning_root": "0xe7ba9f20609c287e35e7559ef4490ab7e3fdedfff5d19a21e4ad69d9e366da28",
+      "ok": true,
+      "verification_ok": true,
+      "execution_mode": "dry_run",
+      "executed_at": "2026-02-01T00:00:52Z",
+      "duration_ms": 5336,
+      "checks": [],
+      "errors": [],
+      "evidence_summary": "One piece of evidence from a medium-tier source indicates no credible consensus that Trump attended UFC 325, with a mention of non-attendance at a nearby event, UFC 322.",
+      "reasoning_summary": "The evidence suggests no credible reports of Trump's attendance at UFC 325. The evidence is from a medium-tier source and does not provide direct confirmation of attendance or non-attendance. The lack of direct evidence leads to a conclusion of NO with moderate confidence.",
+      "justification": "Market: Will Trump attend UFC 325?\nOutcome: NO\nConfidence: 75%\nRule Applied: R_BINARY_DECISION\n\nEvidence Summary:\nOne piece of evidence from a medium-tier source indicates no credible consensus that Trump attended UFC 325, with a mention of non-attendance at a nearby event, UFC 322.\n\nReasoning:\nThe evidence suggests no credible reports of Trump's attendance at UFC 325. The evidence is from a medium-tier source and does not provide direct confirmation of attendance or non-attendance. The lack of direct evidence leads to a conclusion of NO with moderate confidence.\n\nKey Conclusions:\n  1. NO",
+      "evidence_items": [
         {
-          check_id: "chk_01",
-          name: "Evidence validity",
-          status: "pass",
-          message:
-            "OPM page confirms partial lapse in appropriations",
-          requirement_id: "req_001",
+          "evidence_id": "65a6ecc19205fb5f",
+          "source_uri": "serper:search",
+          "source_name": "discover",
+          "tier": 2,
+          "fetched_at": "2026-01-01T00:00:00Z",
+          "content_hash": "579ecd577da7953a846096290f0ca64443fbfbb5a2e2d1c8796d2ba43d945b81",
+          "parsed_excerpt": "{\"relevant_mention\": \"No direct reports of Trump attending UFC 325; one source confirms non-attendance at UFC 322, a nearby event\", \"discovered_sources\": [{\"url\": \"https://www.bjpenn.com/mma-news/donald-trump/donald-trump-not-attending-ufc-322-best-event-of-the-year-confirmed-per-mma-analyst/\", \"title\": \"Donald Trump not attending UFC 322: \\\"Best event of the year ...\", \"relevance\": \"high\"}, {\"url\": \"https://sports.yahoo.com/mma/breaking-news/article/president-trump-floats-hosting-ufc-event-on-w",
+          "status_code": 200
+        }
+      ],
+      "reasoning_steps": [
+        {
+          "step_id": "step_001",
+          "step_type": "evidence_analysis",
+          "description": "Analyzing the single piece of evidence provided.",
+          "conclusion": "No credible consensus that Trump attended UFC 325.",
+          "confidence_delta": 0.0,
+          "depends_on": []
         },
         {
-          check_id: "chk_02",
-          name: "Shutdown condition identified",
-          status: "pass",
-          message:
-            'OPM status reads: "Due to a partial lapse in appropriations, Federal Government operations vary by agency."',
+          "step_id": "step_002",
+          "step_type": "validity_check",
+          "description": "Checking if the evidence is sufficient to make a determination.",
+          "conclusion": "Evidence is valid but not conclusive.",
+          "confidence_delta": 0.0,
+          "depends_on": [
+            "step_001"
+          ]
         },
         {
-          check_id: "chk_03",
-          name: "Source provenance",
-          status: "warn",
-          message:
-            "Single web source (tier 1); confidence adjusted to 0.75",
+          "step_id": "step_003",
+          "step_type": "rule_application",
+          "description": "Applying the binary decision rule to map evidence to YES/NO.",
+          "conclusion": "NO",
+          "confidence_delta": 0.1,
+          "depends_on": [
+            "step_002"
+          ]
         },
         {
-          check_id: "chk_04",
-          name: "Hash integrity",
-          status: "pass",
-          message: "All Merkle proofs valid",
-        },
+          "step_id": "step_004",
+          "step_type": "confidence_assessment",
+          "description": "Assessing confidence level based on evidence quality.",
+          "conclusion": "Moderate confidence in NO outcome.",
+          "confidence_delta": 0.1,
+          "depends_on": [
+            "step_003"
+          ]
+        }
       ],
-      errors: [],
-      // ── Extended fields ──
-      evidence_summary:
-        "The evidence consists of a single item from the U.S. Office of Personnel Management (OPM) website indicating a partial lapse in appropriations affecting federal government operations as of January 31, 2026.",
-      reasoning_summary:
-        "The evidence was analyzed to determine if it supports the occurrence of a U.S. federal government shutdown due to a lapse in appropriations by the specified date. The OPM operating status page explicitly states a partial lapse in appropriations, which per the market rules counts as a shutdown. Confidence was reduced due to reliance on a single web source.",
-      justification:
-        'Market: US government shutdown Saturday?\nOutcome: YES\nConfidence: 75%\nRule Applied: R_BINARY_DECISION\n\nThe OPM operating status page confirms: "Due to a partial lapse in appropriations, Federal Government operations vary by agency." Per the market assumptions, partial shutdowns count as shutdowns. The evidence directly satisfies the resolution criteria.',
-      evidence_items: [
+      "confidence_breakdown": {
+        "base": 0.7,
+        "adjustments": [
+          {
+            "reason": "High provenance sources",
+            "delta": 0.05
+          }
+        ],
+        "final": 0.75
+      },
+      "llm_review": {
+        "reasoning_valid": true,
+        "issues": [],
+        "confidence_adjustments": [
+          {
+            "reason": "High provenance sources",
+            "delta": 0.05
+          }
+        ],
+        "final_justification": "The evidence suggests no credible reports of Trump's attendance at UFC 325. The reasoning is sound, and the confidence is adjusted upwards due to the lack of conflicting evidence and the medium-tier source's reliability."
+      }
+    }
+  },
+  {
+    "market_id": "mk_federal_judge_rules_against_operation_metro_surge_by_friday",
+    "source": {
+      "platform": "kalshi",
+      "event_url": "https://kalshi.com/markets/federal-judge-rules-against-operation-metro-surge-by-friday",
+      "title": "Federal Judge rules against Operation Metro Surge by Friday?",
+      "question": "Federal Judge Kate Menendez is hearing arguments on January 26 in a case over the legality of the Trump Administration’s Operation Metro Surge, which sent around 3,000 additional immigration agents to the state of Minnesota (see: https://www.reuters.com/world/us/trump-send-border-czar-homan-minnesota-2026-01-26/).\n\nThis market will resolve to “Yes” if a federal judge issues an order to halt, stop, pause, or enjoin Operation Metro Surge by January 30, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.\n\nOrder refers to a temporary restraining order, preliminary injunction, permanent injunction, or any other written order carrying legal force issued by a federal judge and entered on the court docket.\n\nAn order will be considered to halt, stop, pause, or enjoin Operation Metro Surge if it broadly commands the operation to cease its implementation for any period of time, or if it otherwise commands a reduction in the number of federal immigration enforcement agents operating under Operation Metro Surge in Minnesota.\n\nFederal immigration enforcement agents refers to Immigration and Customs Enforcement (ICE) and Border Patrol personnel, and any other federal personnel operating in Minnesota for immigration enforcement under Operation Metro Surge.\n\nOrders which command a reduction in the number of immigration enforcement agents operating under Operation Metro Surge in Minnesota will count. Any order commanding a cap on the number of federal immigration agents operating under Operation Metro Surge in Minnesota below the operational level in effect at the time the order is issued will count, including a return to baseline levels before Operation Metro Surge. An order which does not explicitly mention Operation Metro Surge may count, so long as it applies to agents engaged in that operation.\n\nOrders to limit the use of specific actions or tactics (e.g. tear-gas use, search of property without a warrant, etc.), without ordering a reduction/withdrawal/return-to-baseline/cap for federal immigration enforcement agents under Operation Metro Surge in Minnesota, will not count.\n\nAny qualifying order issued within this market’s timeframe will count, regardless of if it is stayed pending appeal, or if it is otherwise not enforced.\n\nThe primary resolution source for this market will be official information from the relevant court; however, a consensus of credible reporting may also be used.",
+      "resolution_deadline": "2026-02-01T00:00:00Z",
+      "resolution_window": {
+        "start": "2026-01-30T00:00:00Z",
+        "end": "2026-02-01T00:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "NO",
+      "official_resolved_at": "2026-01-30T00:00:00Z",
+      "last_updated_at": "2026-01-30T00:00:00Z"
+    },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Title: Federal Judge rules against Operation Metro Surge by Friday?",
+          "event_definition": "A federal judge issues an order to halt, stop, pause, or enjoin Operation Metro Surge by January 30, 2026, 11:59 PM ET.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-01T00:00:00Z",
+          "resolution_window": {
+            "start": "2026-01-30T00:00:00Z",
+            "end": "2026-02-01T00:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
+          ],
+          "allowed_sources": [
+            "court",
+            "news"
+          ],
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
+          },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Operation Metro Surge\", \"predicate\": \"A federal judge issues an order to halt, stop, pause, or enjoin\", \"threshold\": null, \"timeframe\": \"By January 30, 2026, 11:59 PM ET\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Official court orders or credible reporting on the issuance of an order to halt, stop, pause, or enjoin Operation Metro Surge",
+            "source_targets": [],
+            "expected_fields": [
+              "order_text",
+              "order_date",
+              "judge_name"
+            ],
+            "selection_policy": {
+              "strategy": "multi_source_quorum",
+              "quorum": 1
+            },
+            "deferred_source_discovery": true
+          }
+        ],
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The order must be issued by a federal judge and entered on the court docket.",
+            "The order must command a reduction in the number of federal immigration enforcement agents or a cessation of Operation Metro Surge activities."
+          ],
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f2b1c9e",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
+      },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
+    },
+    "oracle_result": {
+      "market_id": "mk_federal_judge_rules_against_operation_metro_surge_by_friday",
+      "outcome": "NO",
+      "confidence": 0.85,
+      "por_root": "0x25fbec21a5599c3b0618f1b99951fe9ee592aa375edd3d638c0bfd2cbd77ac29",
+      "prompt_spec_hash": "0xd53010fcdce09330ea4392f0843964eae899dd767c373f5c4eb956838768d710",
+      "evidence_root": "0xcdd6fcb66f4f4507ff867278d8a4a304aa3dd172346d93ebfbdef380bcd9f14c",
+      "reasoning_root": "0x958b99c55e0ef10a2c524b572d53711021d1f623fd83b1140f0baf1d8d3d672f",
+      "ok": true,
+      "verification_ok": true,
+      "execution_mode": "dry_run",
+      "executed_at": "2026-01-30T00:01:38Z",
+      "duration_ms": 2882,
+      "checks": [],
+      "errors": [],
+      "evidence_summary": "The evidence consists of a single item from a tier 2 source, indicating that no federal judge issued an order to fully halt, stop, pause, or enjoin Operation Metro Surge. Partial injunctions on tactics were issued, but the operation continues.",
+      "reasoning_summary": "The evidence was analyzed for validity and sufficiency, compared against the event definition, and checked for conflicts. The evidence clearly indicates that no order was issued to halt the operation, leading to a conclusion of NO with high confidence.",
+      "justification": "Market: Title: Federal Judge rules against Operation Metro Surge by Friday?\nOutcome: NO\nConfidence: 85%\nRule Applied: R_BINARY_DECISION\n\nEvidence Summary:\nThe evidence consists of a single item from a tier 2 source, indicating that no federal judge issued an order to fully halt, stop, pause, or enjoin Operation Metro Surge. Partial injunctions on tactics were issued, but the operation continues.\n\nReasoning:\nThe evidence was analyzed for validity and sufficiency, compared against the event definition, and checked for conflicts. The evidence clearly indicates that no order was issued to halt the operation, leading to a conclusion of NO with high confidence.\n",
+      "evidence_items": [
         {
-          evidence_id: "ev_6b8b8f6f09dc219d",
-          source_uri:
-            "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
-          source_name: "U.S. Office of Personnel Management",
-          tier: 1,
-          fetched_at: "2026-01-31T04:58:12Z",
-          content_hash:
-            "0x56b0dc8407f79429ad7e6c91ec91a035c88b3527977de23d54013b150f74c633",
-          parsed_excerpt:
-            'Status: Due to a partial lapse in appropriations, Federal Government operations vary by agency. Employees should refer to their home agency for guidance on reporting for duty. (Posted on January 31, 2026 at 12:01 AM)',
-          status_code: 200,
-        },
+          "evidence_id": "65a6ecc19205fb5f",
+          "source_uri": "serper:search",
+          "source_name": "discover",
+          "tier": 2,
+          "fetched_at": "2026-01-01T00:00:00Z",
+          "content_hash": "2568d1996d2e51b8b6df6f4ff7f83eca37b046f030a35cbcf9a68c67e63bce3a",
+          "parsed_excerpt": "{\"court_orders\": [{\"source\": \"[3]\", \"description\": \"District court entered a preliminary injunction with respect to federal immigration-enforcement operations in Minnesota.\"}, {\"source\": \"[8]\", \"description\": \"Federal judge ordered curbs on U.S. immigration agents' tactics in Minneapolis, limiting conduct toward protesters but not halting the operation.\"}], \"denials\": [{\"source\": \"[6]\", \"description\": \"Federal judge denied request to block ICE surge.\"}, {\"source\": \"[9]\", \"description\": \"Judge re",
+          "status_code": 200
+        }
       ],
-      reasoning_steps: [
+      "reasoning_steps": [
         {
-          step_id: "step_001",
-          step_type: "validity_check",
-          description:
-            "Checking if the evidence is sufficient and valid for analysis.",
-          conclusion: "VALID",
-          confidence_delta: 0.0,
-          depends_on: [],
+          "step_id": "step_001",
+          "step_type": "evidence_analysis",
+          "description": "Analyzing the single piece of evidence provided.",
+          "conclusion": "Evidence is usable.",
+          "confidence_delta": 0.1,
+          "depends_on": []
         },
         {
-          step_id: "step_002",
-          step_type: "evidence_analysis",
-          description:
-            "Analyzing the content of the evidence to determine its implications.",
-          conclusion: "Partial shutdown condition identified.",
-          confidence_delta: 0.1,
-          depends_on: ["step_001"],
+          "step_id": "step_002",
+          "step_type": "evidence_analysis",
+          "description": "Comparing evidence against the event definition.",
+          "conclusion": "NO",
+          "confidence_delta": 0.2,
+          "depends_on": [
+            "step_001"
+          ]
         },
         {
-          step_id: "step_003",
-          step_type: "rule_application",
-          description:
-            "Applying the binary decision rule to map evidence to a YES/NO outcome.",
-          conclusion: "YES",
-          confidence_delta: 0.1,
-          depends_on: ["step_002"],
-        },
-        {
-          step_id: "step_004",
-          step_type: "confidence_assessment",
-          description:
-            "Assessing confidence level based on evidence quality and source tier.",
-          conclusion: "Confidence level adjusted to 0.7.",
-          confidence_delta: -0.1,
-          depends_on: ["step_003"],
-        },
+          "step_id": "step_003",
+          "step_type": "confidence_assessment",
+          "description": "Assessing confidence based on evidence quality and agreement.",
+          "conclusion": "Confidence increased.",
+          "confidence_delta": 0.15,
+          "depends_on": [
+            "step_002"
+          ]
+        }
       ],
-      confidence_breakdown: {
-        base: 0.7,
-        adjustments: [
-          { reason: "Single source (low diversity)", delta: -0.1 },
+      "confidence_breakdown": {
+        "base": 0.8,
+        "adjustments": [
           {
-            reason: "High provenance — official .gov source",
-            delta: 0.05,
-          },
-          {
-            reason: "LLM review confirmed reasoning validity",
-            delta: 0.05,
-          },
-          { reason: "Web scrape (not structured API)", delta: -0.05 },
-          { reason: "Evidence directly matches event definition", delta: 0.1 },
+            "reason": "High provenance sources",
+            "delta": 0.05
+          }
         ],
-        final: 0.75,
+        "final": 0.85
       },
-      llm_review: {
-        reasoning_valid: true,
-        issues: [],
-        confidence_adjustments: [
+      "llm_review": {
+        "reasoning_valid": true,
+        "issues": [],
+        "confidence_adjustments": [
           {
-            reason: "High provenance sources",
-            delta: 0.05,
-          },
+            "reason": "High provenance sources",
+            "delta": 0.05
+          }
         ],
-        final_justification:
-          "The evidence from the U.S. Office of Personnel Management confirms a partial lapse in appropriations, indicating a government shutdown condition. The reasoning is sound, and the source is authoritative, justifying a confidence increase.",
-      },
-      execution_steps: [
-        {
-          tool: "fetch:web",
-          uri: "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
-          started_at: "2026-01-31T04:58:10Z",
-          ended_at: "2026-01-31T04:58:12Z",
-          success: true,
-          latency_ms: 1840,
-        },
-      ],
-    },
+        "final_justification": "The evidence clearly indicates that no federal judge issued an order to halt, stop, pause, or enjoin Operation Metro Surge by the specified date. The reasoning is sound, and the confidence level is appropriate given the quality of the evidence."
+      }
+    }
   },
-
-  // ── 1. Resolved MATCH – Bitcoin $100K ──────────────────────────────────
   {
-    market_id: "mk_btc100k_jan25",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/btc-100k-jan-2025",
-      title: "Bitcoin $100K by January 2025",
-      question: "Will Bitcoin exceed $100,000 USD on any major exchange before January 31, 2025?",
-      resolution_deadline: "2025-01-31T00:00:00Z",
-      resolution_window: { start: "2025-01-31T00:00:00Z", end: "2025-02-02T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "YES",
-      official_resolved_at: "2025-01-15T14:32:00Z",
-      last_updated_at: "2025-01-15T14:35:00Z",
+    "market_id": "mk_amd_quarterly_earnings_nongaap_eps_02_03_2026_1pt32",
+    "source": {
+      "platform": "melee",
+      "event_url": "https://melee.xyz/markets/amd-quarterly-earnings-nongaap-eps-02-03-2026-1pt32",
+      "title": "Will Advanced Micro Devices (AMD) beat quarterly earnings?",
+      "question": "As of market creation, Advanced Micro Devices is estimated to release earnings on February 3, 2026. The Street consensus estimate for Advanced Micro Devices’s non-GAAP EPS for the relevant quarter is $1.32 as of market creation. This market will resolve to \"Yes\" if Advanced Micro Devices reports non-GAAP EPS greater than $1.32 for the relevant quarter in its next quarterly earnings release. Otherwise, it will resolve to \"No.\" The resolution source will be the non-GAAP EPS listed in the company’s official earnings documents. \n\nIf Advanced Micro Devices releases earnings without non-GAAP EPS, then the market will resolve according to the non-GAAP EPS figure reported by SeekingAlpha. If no such figure is published within 96h of market close (4:00:00pm ET) on the day earnings are announced, the market will resolve according to the GAAP EPS listed in the company’s official earnings documents; or, if not published there, according to the GAAP EPS provided by SeekingAlpha. If no GAAP EPS number is available from either source at that time, the market will resolve to “No.” (For the purposes of this market, GAAP EPS refers to diluted GAAP EPS, unless it is not published, in which case it refers to basic GAAP EPS.)\n\nIf the company does not release earnings within 45 calendar days of the estimated earnings date, this market will resolve to “No.” \n\nNote: Subsequent restatements, corrections, or revisions made to the initially announced non-GAAP EPS figure will not qualify for resolution, except in the case of obvious and immediate mistakes (e.g., fat finger errors, as with Lyft's (LYFT) earnings release in February 2024).\nNote: The strike prices used in these markets are derived from SeekingAlpha estimates, and reflect the consensus of sell-side analyst estimates for non-GAAP EPS.\nNote: All figures will be rounded to the nearest cent using standard rounding.\nNote: For the purposes of this market, IFRS EPS will be treated as GAAP EPS.\nNote: If multiple versions of non-GAAP EPS are published, the market will resolve according to the primary headline non-GAAP EPS number, which is typically presented on a diluted basis. If diluted is not published, then basic non-GAAP EPS will qualify.\nNote: All figures are expressed in USD, unless otherwise indicated.\nNote: For primarily internationally listed companies, this market refers specifically to the shares traded in the United States on U.S. stock exchanges such as the NYSE or Nasdaq. In cases where the company trades in the U.S. through an American Depositary Receipt (ADR) or American Depositary Share (ADS), this market will refer to the ADR/ADS.\n",
+      "resolution_deadline": "2026-02-07T22:00:00Z",
+      "resolution_window": {
+        "start": "2026-02-03T22:00:00Z",
+        "end": "2026-02-07T22:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-02-03T22:00:00Z",
+      "last_updated_at": "2026-02-03T22:00:00Z"
     },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will Bitcoin exceed $100,000 USD on any major exchange before January 31, 2025?",
-          event_definition: "BTC/USD spot price crosses $100,000 on Coinbase, Binance, or Kraken",
-          timezone: "UTC",
-          resolution_deadline: "2025-01-31T00:00:00Z",
-          resolution_window: { start: "2025-01-31T00:00:00Z", end: "2025-02-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Price must be spot (not futures)", priority: 1 },
-            { rule_id: "R2", description: "Must occur on a regulated exchange", priority: 2 },
-            { rule_id: "R3", description: "Sustained above $100K for ≥1 minute", priority: 3 },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Will Advanced Micro Devices (AMD) beat quarterly earnings?",
+          "event_definition": "Advanced Micro Devices reports non-GAAP EPS greater than $1.32 for the relevant quarter in its next quarterly earnings release.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-02-07T22:00:00Z",
+          "resolution_window": {
+            "start": "2026-02-03T22:00:00Z",
+            "end": "2026-02-07T22:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
           ],
-          allowed_sources: ["coingecko", "coinbase", "binance", "kraken"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: true },
-          metadata: { category: "crypto", asset: "BTC" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "BTC/USD spot price history",
-            source_targets: [
-              { uri: "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart", provider: "coingecko" },
-              { uri: "https://api.pro.coinbase.com/products/BTC-USD/candles", provider: "coinbase" },
-            ],
-            expected_fields: ["timestamp", "price", "volume"],
-            selection_policy: { strategy: "quorum", quorum: 2 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_interpolation", "no_single_source_reliance"],
-        created_at: null,
-        tool_plan: "tp_btc100k_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_btc100k_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_cg", provider: "coingecko", endpoint: "/api/v3/coins/bitcoin/market_chart", tier: 1 },
-          { source_id: "src_cb", provider: "coinbase", endpoint: "/products/BTC-USD/candles", tier: 1 },
-          { source_id: "src_kr", provider: "kraken", endpoint: "/0/public/OHLC?pair=XBTUSD", tier: 1 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "price_threshold" },
-    },
-    oracle_result: {
-      market_id: "mk_btc100k_jan25",
-      outcome: "YES",
-      confidence: 0.97,
-      por_root: "0x8a3f4b2c1d9e7f6a5b0c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3",
-      prompt_spec_hash: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-      evidence_root: "0x7f6e5d4c3b2a1908f7e6d5c4b3a29180f7e6d5c4b3a29180f7e6d5c4b3a29180",
-      reasoning_root: "0xab12cd34ef56ab78cd90ef12ab34cd56ef78ab90cd12ef34ab56cd78ef90ab12",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-15T14:30:00Z",
-      duration_ms: 4520,
-      checks: [
-        { check_id: "chk_01", name: "Source quorum met", status: "pass", message: "3/3 sources confirmed", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Price threshold crossed", status: "pass", message: "BTC hit $100,247 on Coinbase at 2025-01-12T08:42Z" },
-        { check_id: "chk_03", name: "Sustained duration check", status: "pass", message: "Price above $100K for 72+ hours" },
-        { check_id: "chk_04", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 2. Resolved MATCH – Fed Rate Hold ─────────────────────────────────
-  {
-    market_id: "mk_fed_jan25",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/fed-rate-jan-2025",
-      title: "Fed Rate Cut January 2025",
-      question: "Will the Federal Reserve cut interest rates at the January 2025 FOMC meeting?",
-      resolution_deadline: "2025-01-29T20:00:00Z",
-      resolution_window: { start: "2025-01-29T18:00:00Z", end: "2025-01-30T18:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "NO",
-      official_resolved_at: "2025-01-29T19:15:00Z",
-      last_updated_at: "2025-01-29T19:20:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will the Federal Reserve cut interest rates at the January 2025 FOMC meeting?",
-          event_definition: "FOMC announces a reduction in the federal funds target rate at the January 28-29 meeting",
-          timezone: "America/New_York",
-          resolution_deadline: "2025-01-29T20:00:00Z",
-          resolution_window: { start: "2025-01-29T18:00:00Z", end: "2025-01-30T18:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Based on official FOMC statement", priority: 1 },
-            { rule_id: "R2", description: "Any reduction counts (25bp, 50bp, etc.)", priority: 2 },
+          "allowed_sources": [
+            "ir.amd.com",
+            "seekingalpha.com"
           ],
-          allowed_sources: ["federalreserve", "cmegroup"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 43200, allow_challenges: false },
-          metadata: { category: "macro", asset: "rates" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "FOMC statement and rate decision",
-            source_targets: [
-              { uri: "https://www.federalreserve.gov/newsevents/pressreleases.htm", provider: "federalreserve" },
-            ],
-            expected_fields: ["decision", "target_rate", "statement_text"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
           },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"Advanced Micro Devices (AMD)\", \"predicate\": \"non-GAAP EPS > $1.32\", \"threshold\": \"1.32\", \"timeframe\": \"2026-02-03\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Fetch non-GAAP EPS from AMD's official earnings documents or SeekingAlpha if not available.",
+            "source_targets": [
+              {
+                "uri": "https://ir.amd.com",
+                "provider": ""
+              },
+              {
+                "uri": "https://seekingalpha.com/symbol/AMD/earnings",
+                "provider": ""
+              }
+            ],
+            "expected_fields": [
+              "non-GAAP EPS",
+              "GAAP EPS"
+            ],
+            "selection_policy": {
+              "strategy": "fallback_chain",
+              "quorum": 1
+            },
+            "deferred_source_discovery": false
+          }
         ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_market_commentary"],
-        created_at: null,
-        tool_plan: "tp_fed_jan25_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_fed_jan25_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_fed", provider: "federalreserve", endpoint: "/newsevents/pressreleases.htm", tier: 1 },
-          { source_id: "src_cme", provider: "cmegroup", endpoint: "/fedwatch", tier: 1 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: false,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "event_binary" },
-    },
-    oracle_result: {
-      market_id: "mk_fed_jan25",
-      outcome: "NO",
-      confidence: 0.99,
-      por_root: "0xfe3210ab45cd67ef89ab01cd23ef45ab67cd89ef01ab23cd45ef67ab89cd01ef",
-      prompt_spec_hash: "0x23456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01",
-      evidence_root: "0xaabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344",
-      reasoning_root: "0x1122334455667788990011223344556677889900aabbccddeeff001122334455",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-29T19:10:00Z",
-      duration_ms: 2100,
-      checks: [
-        { check_id: "chk_01", name: "Authoritative source confirmed", status: "pass", message: "FOMC statement published", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Rate decision extracted", status: "pass", message: "Fed held rates at 4.25-4.50%" },
-        { check_id: "chk_03", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 3. Resolved MISMATCH – ETH ETF ───────────────────────────────────
-  {
-    market_id: "mk_eth_etf_q1",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/eth-spot-etf-q1-2025",
-      title: "Spot Ethereum ETF Approval Q1 2025",
-      question: "Will the SEC approve a spot Ethereum ETF before the end of Q1 2025?",
-      resolution_deadline: "2025-03-31T23:59:00Z",
-      resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "NO",
-      official_resolved_at: "2025-04-01T12:00:00Z",
-      last_updated_at: "2025-04-01T12:05:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will the SEC approve a spot Ethereum ETF before the end of Q1 2025?",
-          event_definition: "SEC issues formal approval for a spot Ethereum ETF product",
-          timezone: "UTC",
-          resolution_deadline: "2025-03-31T23:59:00Z",
-          resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Full SEC approval required, not just filing acceptance", priority: 1 },
-            { rule_id: "R2", description: "Must be a spot ETF, not futures-based", priority: 2 },
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "The non-GAAP EPS figure is available in the official earnings documents or SeekingAlpha.",
+            "Figures are rounded to the nearest cent using standard rounding.",
+            "If multiple versions of non-GAAP EPS are published, the primary headline number is used."
           ],
-          allowed_sources: ["sec_edgar", "bloomberg"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 172800, allow_challenges: true },
-          metadata: { category: "regulatory", asset: "ETH" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
+      },
+      "tool_plan": {
+        "plan_id": "plan_mk_amd_earnings_2026",
+        "requirements": [
+          "req_001"
+        ],
+        "sources": [
           {
-            requirement_id: "DR1",
-            description: "SEC filing status for ETH spot ETF applications",
-            source_targets: [
-              { uri: "https://efts.sec.gov/LATEST/search-index?q=ethereum+etf", provider: "sec_edgar" },
-            ],
-            expected_fields: ["filing_status", "decision_date", "approval_status"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
+            "source_id": "web",
+            "provider": "web",
+            "endpoint": "",
+            "tier": 0
+          }
         ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_speculation"],
-        created_at: null,
-        tool_plan: "tp_eth_etf_01",
-        extra: {},
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
       },
-      tool_plan: {
-        plan_id: "tp_eth_etf_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_sec", provider: "sec_edgar", endpoint: "/LATEST/search-index", tier: 1 },
-          { source_id: "src_bb", provider: "bloomberg", endpoint: "/news/sec-filings", tier: 2 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "regulatory_decision" },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
     },
-    oracle_result: {
-      market_id: "mk_eth_etf_q1",
-      outcome: "YES",
-      confidence: 0.62,
-      por_root: "0xddee11ff22aa33bb44cc55dd66ee77ff88990011aabbccddeeff00112233aabb",
-      prompt_spec_hash: "0x99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa",
-      evidence_root: "0x44332211ffeeddccbbaa998877665544332211ffeeddccbbaa99887766554433",
-      reasoning_root: "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-04-01T10:00:00Z",
-      duration_ms: 6800,
-      checks: [
-        { check_id: "chk_01", name: "SEC filing lookup", status: "pass", message: "Found relevant filings", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Approval status check", status: "warn", message: "Conflicting signals: filing accepted but no final approval order found" },
-        { check_id: "chk_03", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
+    "oracle_result": null
   },
-
-  // ── 4. Pending – SpaceX Starship ──────────────────────────────────────
   {
-    market_id: "mk_spacex_orbit_q2",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/starship-orbital-q2-2025",
-      title: "SpaceX Starship Orbital Success",
-      question: "Will SpaceX achieve a fully successful Starship orbital flight by Q2 2025?",
-      resolution_deadline: "2025-06-30T23:59:00Z",
-      resolution_window: { start: "2025-06-30T00:00:00Z", end: "2025-07-02T00:00:00Z" },
-      status: "OPEN",
-      official_outcome: "UNKNOWN",
-      official_resolved_at: null,
-      last_updated_at: "2025-06-01T09:00:00Z",
+    "market_id": "mk_spacex_and_xai_merger_offcially_announced_by_june_30",
+    "source": {
+      "platform": "kalshi",
+      "event_url": "https://kalshi.com/markets/spacex-and-xai-merger-offcially-announced-by-june-30",
+      "title": "SpaceX and xAI merger officially announced by June 30?",
+      "question": "This market will resolve to \"Yes\" if it is officially announced that SpaceX (Space Exploration Technologies Corp.) will be, has been, or is being acquired by or merged with xAI, or vice versa, by June 30, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nAn announcement by SpaceX or xAI within this market's timeframe will qualify for a \"Yes\" resolution, regardless of whether or when the announced acquisition/merger actually occurs.\n\nAnnouncements of partial sales may count, as long as the acquiring company acquires a controlling interest in the other company. A “controlling interest” refers to a change in ownership sufficient to control the company’s strategic decisions (typically more than 50% of equity, or equivalent control via voting and governance rights). Transactions or investments that do not result in a transfer of controlling interest will not count.\n\nThe primary resolution source for this market will be official information from SpaceX or xAI; however, a consensus of credible reporting may also be used.",
+      "resolution_deadline": "2026-07-02T00:00:00Z",
+      "resolution_window": {
+        "start": "2026-06-30T00:00:00Z",
+        "end": "2026-07-02T00:00:00Z"
+      },
+      "status": "RESOLVED",
+      "official_outcome": "YES",
+      "official_resolved_at": "2026-06-30T00:00:00Z",
+      "last_updated_at": "2026-06-30T00:00:00Z"
     },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will SpaceX achieve a fully successful Starship orbital flight by Q2 2025?",
-          event_definition: "Starship completes a full orbital trajectory with both booster and ship performing nominally",
-          timezone: "UTC",
-          resolution_deadline: "2025-06-30T23:59:00Z",
-          resolution_window: { start: "2025-06-30T00:00:00Z", end: "2025-07-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Complete orbital trajectory required", priority: 1 },
-            { rule_id: "R2", description: "Both booster and ship must perform nominally", priority: 2 },
+    "parse_result": {
+      "ok": true,
+      "prompt_spec": {
+        "schema_version": "v1",
+        "task_type": "prediction_resolution",
+        "market": {
+          "question": "Title: SpaceX and xAI merger officially announced by June 30?",
+          "event_definition": "An official announcement by SpaceX or xAI that SpaceX will be, has been, or is being acquired by or merged with xAI, or vice versa, by June 30, 2026, 11:59 PM ET.",
+          "timezone": "UTC",
+          "resolution_deadline": "2026-07-02T00:00:00Z",
+          "resolution_window": {
+            "start": "2026-06-30T00:00:00Z",
+            "end": "2026-07-02T00:00:00Z"
+          },
+          "resolution_rules": [
+            {
+              "rule_id": "R_VALIDITY",
+              "description": "Check if evidence is sufficient",
+              "priority": 100
+            },
+            {
+              "rule_id": "R_CONFLICT",
+              "description": "Handle conflicting evidence",
+              "priority": 90
+            },
+            {
+              "rule_id": "R_BINARY_DECISION",
+              "description": "Map evidence to YES/NO",
+              "priority": 80
+            },
+            {
+              "rule_id": "R_CONFIDENCE",
+              "description": "Assign confidence score",
+              "priority": 70
+            },
+            {
+              "rule_id": "R_INVALID_FALLBACK",
+              "description": "Return INVALID if cannot resolve",
+              "priority": 0
+            }
           ],
-          allowed_sources: ["spacex", "faa_gov", "nasa"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 259200, allow_challenges: true },
-          metadata: { category: "aerospace" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "Launch outcome reports",
-            source_targets: [
-              { uri: "https://api.spacex.com/v5/launches", provider: "spacex" },
-              { uri: "https://www.faa.gov/space/licenses", provider: "faa_gov" },
-            ],
-            expected_fields: ["launch_date", "outcome", "vehicle_status"],
-            selection_policy: { strategy: "quorum", quorum: 2 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_speculation"],
-        created_at: null,
-        tool_plan: "tp_spacex_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_spacex_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_sx", provider: "spacex", endpoint: "/v5/launches", tier: 1 },
-          { source_id: "src_faa", provider: "faa_gov", endpoint: "/space/licenses", tier: 1 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "event_binary" },
-    },
-    oracle_result: null,
-  },
-
-  // ── 5. Resolved MATCH – Gold $2800 ────────────────────────────────────
-  {
-    market_id: "mk_gold_2800",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/gold-2800-feb-2025",
-      title: "Gold Price > $2,800/oz",
-      question: "Will gold spot price exceed $2,800 per ounce before February 2025?",
-      resolution_deadline: "2025-02-01T00:00:00Z",
-      resolution_window: { start: "2025-01-31T00:00:00Z", end: "2025-02-02T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "YES",
-      official_resolved_at: "2025-01-22T14:00:00Z",
-      last_updated_at: "2025-01-22T14:10:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will gold spot price exceed $2,800 per ounce before February 2025?",
-          event_definition: "XAU/USD spot exceeds $2,800 on London PM fix or COMEX",
-          timezone: "UTC",
-          resolution_deadline: "2025-02-01T00:00:00Z",
-          resolution_window: { start: "2025-01-31T00:00:00Z", end: "2025-02-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Spot price only, not futures", priority: 1 },
-            { rule_id: "R2", description: "London fix or COMEX reference price", priority: 2 },
+          "allowed_sources": [
+            "official"
           ],
-          allowed_sources: ["lbma", "kitco", "comex"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: true },
-          metadata: { category: "commodities", asset: "XAU" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "Gold spot price feeds",
-            source_targets: [
-              { uri: "https://prices.lbma.org.uk/json/gold.json", provider: "lbma" },
-              { uri: "https://www.kitco.com/gold-price-today-usa/", provider: "kitco" },
-            ],
-            expected_fields: ["price", "timestamp", "fix_type"],
-            selection_policy: { strategy: "quorum", quorum: 2 },
+          "min_provenance_tier": 0,
+          "dispute_policy": {
+            "dispute_window_seconds": 86400,
+            "allow_challenges": true
           },
+          "metadata": {}
+        },
+        "prediction_semantics": "{\"target_entity\": \"SpaceX and xAI\", \"predicate\": \"official announcement of merger or acquisition\", \"threshold\": \"controlling interest (more than 50% equity or equivalent control)\", \"timeframe\": \"by June 30, 2026, 11:59 PM ET\"}",
+        "data_requirements": [
+          {
+            "requirement_id": "req_001",
+            "description": "Official announcement from SpaceX or xAI regarding merger or acquisition",
+            "source_targets": [],
+            "expected_fields": [
+              "announcement_text",
+              "date",
+              "source"
+            ],
+            "selection_policy": {
+              "strategy": "multi_source_quorum",
+              "quorum": 1
+            },
+            "deferred_source_discovery": true
+          }
         ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_interpolation"],
-        created_at: null,
-        tool_plan: "tp_gold_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_gold_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_lbma", provider: "lbma", endpoint: "/json/gold.json", tier: 1 },
-          { source_id: "src_kitco", provider: "kitco", endpoint: "/gold-price-today-usa/", tier: 2 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "price_threshold" },
-    },
-    oracle_result: {
-      market_id: "mk_gold_2800",
-      outcome: "YES",
-      confidence: 0.96,
-      por_root: "0x5566778899aabbcc5566778899aabbcc5566778899aabbcc5566778899aabbcc",
-      prompt_spec_hash: "0xccbbaa99887766554433221100ffeeddccbbaa99887766554433221100ffeedd",
-      evidence_root: "0x11ff22ee33dd44cc55bb66aa77009988776655443322110011ff22ee33dd44cc",
-      reasoning_root: "0x998877665544332211009988776655443322110099887766554433221100aabb",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-22T13:50:00Z",
-      duration_ms: 2900,
-      checks: [
-        { check_id: "chk_01", name: "Price feed quorum", status: "pass", message: "2/2 sources confirmed $2,843 on Jan 20", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 6. Disputed – TikTok Ban ──────────────────────────────────────────
-  {
-    market_id: "mk_tiktok_ban",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/tiktok-ban-us-jan-2025",
-      title: "US TikTok Ban Enforcement",
-      question: "Will the US enforce a TikTok ban or forced sale by January 19, 2025?",
-      resolution_deadline: "2025-01-19T23:59:00Z",
-      resolution_window: { start: "2025-01-19T00:00:00Z", end: "2025-01-21T00:00:00Z" },
-      status: "DISPUTED",
-      official_outcome: "NO",
-      official_resolved_at: "2025-01-19T18:00:00Z",
-      last_updated_at: "2025-01-22T10:00:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will the US enforce a TikTok ban or forced sale by January 19, 2025?",
-          event_definition: "US government enforces ban on TikTok or forces ByteDance to complete divestiture",
-          timezone: "America/New_York",
-          resolution_deadline: "2025-01-19T23:59:00Z",
-          resolution_window: { start: "2025-01-19T00:00:00Z", end: "2025-01-21T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Based on official government action", priority: 1 },
-            { rule_id: "R2", description: "Extension counts as non-enforcement", priority: 2 },
-            { rule_id: "R3", description: "Temporary app store removal does not count unless permanent", priority: 3 },
+        "output_schema_ref": "core.schemas.verdict.DeterministicVerdict",
+        "forbidden_behaviors": [],
+        "created_at": null,
+        "tool_plan": null,
+        "extra": {
+          "strict_mode": true,
+          "compiler": "llm",
+          "assumptions": [
+            "An official announcement is defined as a public statement from SpaceX or xAI.",
+            "A controlling interest is defined as more than 50% equity or equivalent control via voting and governance rights."
           ],
-          allowed_sources: ["whitehouse", "supremecourt", "reuters", "doj"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 259200, allow_challenges: true },
-          metadata: { category: "regulation", region: "US" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "Government action records",
-            source_targets: [
-              { uri: "https://www.whitehouse.gov/briefing-room/", provider: "whitehouse" },
-              { uri: "https://www.supremecourt.gov/opinions/slipopinion/24", provider: "supremecourt" },
-            ],
-            expected_fields: ["action_type", "effective_date", "enforcement_status"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_political_bias"],
-        created_at: null,
-        tool_plan: "tp_tiktok_01",
-        extra: {},
+          "confidence_policy": {
+            "min_confidence_for_yesno": 0.55,
+            "default_confidence": 0.7
+          }
+        }
       },
-      tool_plan: {
-        plan_id: "tp_tiktok_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_wh", provider: "whitehouse", endpoint: "/briefing-room/", tier: 1 },
-          { source_id: "src_sc", provider: "supremecourt", endpoint: "/opinions/slipopinion/24", tier: 1 },
-          { source_id: "src_rt", provider: "reuters", endpoint: "/technology/tiktok", tier: 2 },
+      "tool_plan": {
+        "plan_id": "plan_mk_3f4b2c1d",
+        "requirements": [
+          "req_001"
         ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
+        "sources": [],
+        "min_provenance_tier": 0,
+        "allow_fallbacks": true,
+        "extra": {}
       },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "regulatory_action" },
+      "error": null,
+      "metadata": {
+        "compiler": "llm",
+        "strict_mode": true,
+        "question_type": "event_binary"
+      }
     },
-    oracle_result: {
-      market_id: "mk_tiktok_ban",
-      outcome: "NO",
-      confidence: 0.88,
-      por_root: "0xaabb1122ccdd3344eeff5566aabb7788ccdd9900eeff1122aabb3344ccdd5566",
-      prompt_spec_hash: "0x334455667788990011223344556677889900aabbccddeeff0011223344556677",
-      evidence_root: "0xeeff0011aabb2233ccdd4455eeff6677aabb8899ccdd0011eeff2233aabb4455",
-      reasoning_root: "0x556677889900aabbccddeeff00112233445566778899aabbccddeeff00112233",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-19T17:50:00Z",
-      duration_ms: 4100,
-      checks: [
-        { check_id: "chk_01", name: "Government action lookup", status: "pass", message: "Executive order for 90-day extension found", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Supreme Court ruling checked", status: "pass", message: "Law upheld but enforcement paused" },
-        { check_id: "chk_03", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 7. Failed parse – Malformed question ──────────────────────────────
-  {
-    market_id: "mk_doge_xrp_flip",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/doge-xrp-flippening",
-      title: "Dogecoin Flippens XRP",
-      question: "Will Dogecoin's market cap exceed XRP's market cap at any point in Q1 2025?",
-      resolution_deadline: "2025-03-31T23:59:00Z",
-      resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "NO",
-      official_resolved_at: "2025-04-01T06:00:00Z",
-      last_updated_at: "2025-04-01T06:05:00Z",
-    },
-    parse_result: {
-      ok: false,
-      prompt_spec: null,
-      tool_plan: null,
-      error: "ParseError: Ambiguous comparison target — 'market cap' could refer to circulating or fully diluted. Resolution rules do not specify. Strict mode rejects ambiguous questions.",
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "relative_comparison" },
-    },
-    oracle_result: null,
-  },
-
-  // ── 8. Verification failed ────────────────────────────────────────────
-  {
-    market_id: "mk_nvidia_2t",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/nvidia-2t-jan-2025",
-      title: "Nvidia Holds $2T Market Cap All January",
-      question: "Will Nvidia maintain a market cap above $2 trillion for every trading day in January 2025?",
-      resolution_deadline: "2025-02-01T06:00:00Z",
-      resolution_window: { start: "2025-02-01T00:00:00Z", end: "2025-02-03T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "YES",
-      official_resolved_at: "2025-02-01T06:00:00Z",
-      last_updated_at: "2025-02-01T06:05:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will Nvidia maintain a market cap above $2 trillion for every trading day in January 2025?",
-          event_definition: "NVDA closing market cap ≥ $2T on every NYSE trading day in Jan 2025",
-          timezone: "America/New_York",
-          resolution_deadline: "2025-02-01T06:00:00Z",
-          resolution_window: { start: "2025-02-01T00:00:00Z", end: "2025-02-03T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Based on closing price each trading day", priority: 1 },
-            { rule_id: "R2", description: "USD market cap using shares outstanding × close", priority: 2 },
-          ],
-          allowed_sources: ["yahoo_finance", "bloomberg"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: true },
-          metadata: { category: "equities", ticker: "NVDA" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "NVDA daily closing data for January 2025",
-            source_targets: [
-              { uri: "https://query1.finance.yahoo.com/v8/finance/chart/NVDA", provider: "yahoo_finance" },
-            ],
-            expected_fields: ["date", "close", "market_cap"],
-            selection_policy: { strategy: "quorum", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_extrapolation"],
-        created_at: null,
-        tool_plan: "tp_nvidia_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_nvidia_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_yf", provider: "yahoo_finance", endpoint: "/v8/finance/chart/NVDA", tier: 2 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: false,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "sustained_threshold" },
-    },
-    oracle_result: {
-      market_id: "mk_nvidia_2t",
-      outcome: "YES",
-      confidence: 0.91,
-      por_root: "0x1234abcd5678ef901234abcd5678ef901234abcd5678ef901234abcd5678ef90",
-      prompt_spec_hash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-      evidence_root: "0x0000000000000000000000000000000000000000000000000000000000000000",
-      reasoning_root: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-      ok: true,
-      verification_ok: false,
-      execution_mode: "live",
-      executed_at: "2025-02-01T05:50:00Z",
-      duration_ms: 7200,
-      checks: [
-        { check_id: "chk_01", name: "Data completeness", status: "pass", message: "21/21 trading days retrieved", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Evidence hash verification", status: "fail", message: "Evidence root mismatch: expected 0x7f... got 0x00..." },
-        { check_id: "chk_03", name: "Merkle proof", status: "fail", message: "Cannot reconstruct Merkle tree from provided leaves" },
-      ],
-      errors: ["Evidence root hash mismatch detected during verification pass. Data may have been modified after collection."],
-    },
-  },
-
-  // ── 9. Pending – S&P 500 Correction ───────────────────────────────────
-  {
-    market_id: "mk_sp500_correction",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/sp500-correction-q1-2025",
-      title: "S&P 500 10% Correction Q1 2025",
-      question: "Will the S&P 500 experience a 10%+ correction from its Q1 2025 peak?",
-      resolution_deadline: "2025-03-31T23:59:00Z",
-      resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-      status: "OPEN",
-      official_outcome: "UNKNOWN",
-      official_resolved_at: null,
-      last_updated_at: "2025-03-15T08:00:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will the S&P 500 experience a 10%+ correction from its Q1 2025 peak?",
-          event_definition: "SPX closes ≥10% below its highest closing value during Q1 2025",
-          timezone: "America/New_York",
-          resolution_deadline: "2025-03-31T23:59:00Z",
-          resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Based on closing prices only", priority: 1 },
-            { rule_id: "R2", description: "Peak-to-trough within Q1 2025", priority: 2 },
-          ],
-          allowed_sources: ["yahoo_finance", "bloomberg", "spglobal"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: true },
-          metadata: { category: "equities", index: "SPX" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "SPX daily close data Q1 2025",
-            source_targets: [
-              { uri: "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC", provider: "yahoo_finance" },
-            ],
-            expected_fields: ["date", "close", "high", "low"],
-            selection_policy: { strategy: "quorum", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction"],
-        created_at: null,
-        tool_plan: "tp_sp500_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_sp500_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_yf", provider: "yahoo_finance", endpoint: "/v8/finance/chart/%5EGSPC", tier: 2 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "market_event" },
-    },
-    oracle_result: null,
-  },
-
-  // ── 10. Resolved MATCH – China GDP ────────────────────────────────────
-  {
-    market_id: "mk_china_gdp_5",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/china-gdp-2024",
-      title: "China 2024 GDP Growth > 5%",
-      question: "Will China's official 2024 GDP growth rate exceed 5%?",
-      resolution_deadline: "2025-01-31T00:00:00Z",
-      resolution_window: { start: "2025-01-17T00:00:00Z", end: "2025-01-31T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "NO",
-      official_resolved_at: "2025-01-17T04:00:00Z",
-      last_updated_at: "2025-01-17T04:05:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will China's official 2024 GDP growth rate exceed 5%?",
-          event_definition: "NBS China reports annual GDP growth strictly above 5.0%",
-          timezone: "Asia/Shanghai",
-          resolution_deadline: "2025-01-31T00:00:00Z",
-          resolution_window: { start: "2025-01-17T00:00:00Z", end: "2025-01-31T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Official NBS figure only", priority: 1 },
-            { rule_id: "R2", description: "Annual year-over-year growth rate", priority: 2 },
-          ],
-          allowed_sources: ["nbs_china", "worldbank", "imf"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 604800, allow_challenges: true },
-          metadata: { category: "macro", country: "CN" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "China GDP growth official release",
-            source_targets: [
-              { uri: "https://www.stats.gov.cn/english/", provider: "nbs_china" },
-            ],
-            expected_fields: ["gdp_growth_yoy", "period", "source"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_estimate_as_official"],
-        created_at: null,
-        tool_plan: "tp_china_gdp_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_china_gdp_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_nbs", provider: "nbs_china", endpoint: "/english/", tier: 1 },
-          { source_id: "src_wb", provider: "worldbank", endpoint: "/indicator/NY.GDP.MKTP.KD.ZG", tier: 2 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "economic_metric" },
-    },
-    oracle_result: {
-      market_id: "mk_china_gdp_5",
-      outcome: "NO",
-      confidence: 0.94,
-      por_root: "0x2233445566778899aabbccddeeff00112233445566778899aabbccddeeff0011",
-      prompt_spec_hash: "0xffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
-      evidence_root: "0x8899aabbccddeeff00112233445566778899aabbccddeeff0011223344556677",
-      reasoning_root: "0x66778899aabbccddeeff001122334455667788990011223344556677889900aa",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-17T03:50:00Z",
-      duration_ms: 3400,
-      checks: [
-        { check_id: "chk_01", name: "NBS data retrieved", status: "pass", message: "Official figure: 4.9%", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 11. Resolved MATCH – Tesla deliveries ─────────────────────────────
-  {
-    market_id: "mk_tsla_500k_q4",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/tesla-500k-q4-2024",
-      title: "Tesla Q4 2024 Deliveries > 500K",
-      question: "Will Tesla deliver more than 500,000 vehicles in Q4 2024?",
-      resolution_deadline: "2025-01-10T00:00:00Z",
-      resolution_window: { start: "2025-01-02T00:00:00Z", end: "2025-01-10T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "YES",
-      official_resolved_at: "2025-01-02T16:00:00Z",
-      last_updated_at: "2025-01-02T16:05:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will Tesla deliver more than 500,000 vehicles in Q4 2024?",
-          event_definition: "Tesla reports Q4 2024 global deliveries strictly above 500,000 units",
-          timezone: "UTC",
-          resolution_deadline: "2025-01-10T00:00:00Z",
-          resolution_window: { start: "2025-01-02T00:00:00Z", end: "2025-01-10T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Based on official Tesla delivery report", priority: 1 },
-            { rule_id: "R2", description: "Global deliveries count", priority: 2 },
-          ],
-          allowed_sources: ["tesla_ir", "sec_edgar"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: false },
-          metadata: { category: "corporate", ticker: "TSLA" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "Tesla Q4 delivery figures",
-            source_targets: [
-              { uri: "https://ir.tesla.com/sec-filings", provider: "tesla_ir" },
-            ],
-            expected_fields: ["deliveries", "period", "models"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_estimate_as_official"],
-        created_at: "2024-12-28T10:00:00Z",
-        tool_plan: "tp_tsla_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_tsla_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_tsla", provider: "tesla_ir", endpoint: "/sec-filings", tier: 1 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: false,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "corporate_metric" },
-    },
-    oracle_result: {
-      market_id: "mk_tsla_500k_q4",
-      outcome: "YES",
-      confidence: 0.99,
-      por_root: "0xa1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-      prompt_spec_hash: "0xd4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
-      evidence_root: "0xb2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
-      reasoning_root: "0xc3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-02T15:50:00Z",
-      duration_ms: 2100,
-      checks: [
-        { check_id: "chk_01", name: "Official report found", status: "pass", message: "Tesla reported 512,300 Q4 deliveries", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 12. Pending – EU AI Act ───────────────────────────────────────────
-  {
-    market_id: "mk_eu_ai_act",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/eu-ai-act-enforcement-2025",
-      title: "EU AI Act Enforcement Before June 2025",
-      question: "Will the EU AI Act begin formal enforcement actions before June 2025?",
-      resolution_deadline: "2025-06-01T00:00:00Z",
-      resolution_window: { start: "2025-05-31T00:00:00Z", end: "2025-06-03T00:00:00Z" },
-      status: "OPEN",
-      official_outcome: "UNKNOWN",
-      official_resolved_at: null,
-      last_updated_at: "2025-05-20T12:00:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will the EU AI Act begin formal enforcement actions before June 2025?",
-          event_definition: "Any EU member state or EU body takes a formal enforcement action under the AI Act",
-          timezone: "Europe/Brussels",
-          resolution_deadline: "2025-06-01T00:00:00Z",
-          resolution_window: { start: "2025-05-31T00:00:00Z", end: "2025-06-03T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Formal enforcement action, not just guidelines", priority: 1 },
-            { rule_id: "R2", description: "Any EU member state counts", priority: 2 },
-          ],
-          allowed_sources: ["eur_lex", "ec_europa"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 259200, allow_challenges: true },
-          metadata: { category: "regulation", region: "EU" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "EU AI Act enforcement records",
-            source_targets: [
-              { uri: "https://eur-lex.europa.eu/search.html", provider: "eur_lex" },
-            ],
-            expected_fields: ["action_type", "date", "member_state", "entity_targeted"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_speculation"],
-        created_at: null,
-        tool_plan: "tp_eu_ai_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_eu_ai_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_el", provider: "eur_lex", endpoint: "/search.html", tier: 1 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: false,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "regulatory_action" },
-    },
-    oracle_result: null,
-  },
-
-  // ── 13. Resolved MATCH with low confidence – Argentina inflation ──────
-  {
-    market_id: "mk_argentina_cpi",
-    source: {
-      platform: "kalshi",
-      event_url: "https://kalshi.com/markets/argentina-inflation-under-100",
-      title: "Argentina YoY Inflation < 100%",
-      question: "Will Argentina's year-over-year inflation rate drop below 100% by March 2025?",
-      resolution_deadline: "2025-03-31T00:00:00Z",
-      resolution_window: { start: "2025-03-15T00:00:00Z", end: "2025-03-31T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "YES",
-      official_resolved_at: "2025-01-14T16:00:00Z",
-      last_updated_at: "2025-01-14T16:05:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will Argentina's year-over-year inflation rate drop below 100% by March 2025?",
-          event_definition: "INDEC reports any monthly CPI release with YoY < 100% on or before March 31, 2025",
-          timezone: "America/Argentina/Buenos_Aires",
-          resolution_deadline: "2025-03-31T00:00:00Z",
-          resolution_window: { start: "2025-03-15T00:00:00Z", end: "2025-03-31T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "Official INDEC CPI data", priority: 1 },
-            { rule_id: "R2", description: "Year-over-year comparison", priority: 2 },
-          ],
-          allowed_sources: ["indec", "imf"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 604800, allow_challenges: true },
-          metadata: { category: "macro", country: "AR" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "Argentina CPI monthly releases",
-            source_targets: [
-              { uri: "https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-5-31", provider: "indec" },
-            ],
-            expected_fields: ["cpi_yoy", "month", "source"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_estimate_as_official"],
-        created_at: null,
-        tool_plan: "tp_argentina_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_argentina_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_indec", provider: "indec", endpoint: "/indec/web/Nivel4-Tema-3-5-31", tier: 1 },
-          { source_id: "src_imf", provider: "imf", endpoint: "/external/datamapper/", tier: 2 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: false, question_type: "economic_metric" },
-    },
-    oracle_result: {
-      market_id: "mk_argentina_cpi",
-      outcome: "YES",
-      confidence: 0.72,
-      por_root: "0xffee1100ddcc2233bbaa4455998877665544332211ffee1100ddcc2233bbaa44",
-      prompt_spec_hash: "0x44556677889900aabbccddeeff001122334455667788990011223344556677",
-      evidence_root: "0xbbaa99887766554433221100ffeeddccbbaa99887766554433221100ffeedd",
-      reasoning_root: "0x1100ffeeddccbbaa998877665544332211009988776655443322110099887766",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-01-14T15:50:00Z",
-      duration_ms: 3800,
-      checks: [
-        { check_id: "chk_01", name: "INDEC data retrieved", status: "pass", message: "December 2024 CPI YoY: 89.4%", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Cross-reference IMF", status: "warn", message: "IMF data not yet updated for December 2024" },
-        { check_id: "chk_03", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 14. Dry run – ETH L2 TVL ──────────────────────────────────────────
-  {
-    market_id: "mk_eth_l2_50b",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/eth-l2-tvl-50b",
-      title: "Ethereum L2 TVL > $50B",
-      question: "Will total Ethereum L2 TVL exceed $50 billion before March 2025?",
-      resolution_deadline: "2025-03-01T00:00:00Z",
-      resolution_window: { start: "2025-02-28T00:00:00Z", end: "2025-03-02T00:00:00Z" },
-      status: "CLOSED",
-      official_outcome: "UNKNOWN",
-      official_resolved_at: null,
-      last_updated_at: "2025-02-28T12:00:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will total Ethereum L2 TVL exceed $50 billion before March 2025?",
-          event_definition: "Sum of all L2s tracked by L2Beat exceeds $50B USD",
-          timezone: "UTC",
-          resolution_deadline: "2025-03-01T00:00:00Z",
-          resolution_window: { start: "2025-02-28T00:00:00Z", end: "2025-03-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "L2Beat aggregate TVL", priority: 1 },
-            { rule_id: "R2", description: "USD value at time of measurement", priority: 2 },
-          ],
-          allowed_sources: ["l2beat", "defillama"],
-          min_provenance_tier: 2,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: true },
-          metadata: { category: "defi", ecosystem: "ethereum" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "L2 aggregate TVL data",
-            source_targets: [
-              { uri: "https://l2beat.com/api/tvl", provider: "l2beat" },
-              { uri: "https://api.llama.fi/v2/chains", provider: "defillama" },
-            ],
-            expected_fields: ["total_tvl_usd", "timestamp", "chain_breakdown"],
-            selection_policy: { strategy: "quorum", quorum: 2 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction"],
-        created_at: null,
-        tool_plan: "tp_eth_l2_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_eth_l2_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_l2b", provider: "l2beat", endpoint: "/api/tvl", tier: 2 },
-          { source_id: "src_dll", provider: "defillama", endpoint: "/v2/chains", tier: 2 },
-        ],
-        min_provenance_tier: 2,
-        allow_fallbacks: true,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "aggregate_metric" },
-    },
-    oracle_result: {
-      market_id: "mk_eth_l2_50b",
-      outcome: "NO",
-      confidence: 0.81,
-      por_root: "0xdead0000beef1111cafe2222face3333dead4444beef5555cafe6666face7777",
-      prompt_spec_hash: "0xcafe0000face1111dead2222beef3333cafe4444face5555dead6666beef7777",
-      evidence_root: "0xface0000dead1111beef2222cafe3333face4444dead5555beef6666cafe7777",
-      reasoning_root: "0xbeef0000cafe1111face2222dead3333beef4444cafe5555face6666dead7777",
-      ok: true,
-      verification_ok: true,
-      execution_mode: "dry_run",
-      executed_at: "2025-02-25T10:00:00Z",
-      duration_ms: 5200,
-      checks: [
-        { check_id: "chk_01", name: "L2Beat TVL check", status: "pass", message: "Aggregate L2 TVL: $42.3B as of Feb 25", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "DefiLlama cross-check", status: "pass", message: "DefiLlama reports $41.8B" },
-        { check_id: "chk_03", name: "Dry run flag", status: "warn", message: "Executed in dry_run mode — results not committed" },
-      ],
-      errors: [],
-    },
-  },
-
-  // ── 15. Resolved with errors – WHO PHEIC ──────────────────────────────
-  {
-    market_id: "mk_who_pheic_q1",
-    source: {
-      platform: "polymarket",
-      event_url: "https://polymarket.com/event/who-pheic-q1-2025",
-      title: "New WHO PHEIC Declaration Q1 2025",
-      question: "Will the WHO declare a new Public Health Emergency of International Concern in Q1 2025?",
-      resolution_deadline: "2025-03-31T23:59:00Z",
-      resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-      status: "RESOLVED",
-      official_outcome: "NO",
-      official_resolved_at: "2025-04-01T08:00:00Z",
-      last_updated_at: "2025-04-01T08:05:00Z",
-    },
-    parse_result: {
-      ok: true,
-      prompt_spec: {
-        schema_version: "1.2.0",
-        task_type: "resolution",
-        market: {
-          question: "Will the WHO declare a new Public Health Emergency of International Concern in Q1 2025?",
-          event_definition: "WHO Director-General declares a new PHEIC (not continuation of existing)",
-          timezone: "Europe/Geneva",
-          resolution_deadline: "2025-03-31T23:59:00Z",
-          resolution_window: { start: "2025-03-31T00:00:00Z", end: "2025-04-02T00:00:00Z" },
-          resolution_rules: [
-            { rule_id: "R1", description: "New declaration only, not continuation", priority: 1 },
-            { rule_id: "R2", description: "Official WHO announcement required", priority: 2 },
-          ],
-          allowed_sources: ["who_int"],
-          min_provenance_tier: 1,
-          dispute_policy: { dispute_window_seconds: 86400, allow_challenges: false },
-          metadata: { category: "health" },
-        },
-        prediction_semantics: "binary_yes_no",
-        data_requirements: [
-          {
-            requirement_id: "DR1",
-            description: "WHO emergency declarations",
-            source_targets: [
-              { uri: "https://www.who.int/emergencies/situations", provider: "who_int" },
-            ],
-            expected_fields: ["declaration_type", "date", "disease", "status"],
-            selection_policy: { strategy: "authoritative", quorum: 1 },
-          },
-        ],
-        output_schema_ref: "oracle_output_v1.2",
-        forbidden_behaviors: ["no_future_prediction", "no_health_advice"],
-        created_at: null,
-        tool_plan: "tp_who_01",
-        extra: {},
-      },
-      tool_plan: {
-        plan_id: "tp_who_01",
-        requirements: ["DR1"],
-        sources: [
-          { source_id: "src_who", provider: "who_int", endpoint: "/emergencies/situations", tier: 1 },
-        ],
-        min_provenance_tier: 1,
-        allow_fallbacks: false,
-        extra: {},
-      },
-      error: null,
-      metadata: { compiler: "prompt-compiler-v2.1", strict_mode: true, question_type: "institutional_declaration" },
-    },
-    oracle_result: {
-      market_id: "mk_who_pheic_q1",
-      outcome: "NO",
-      confidence: 0.55,
-      por_root: "0x0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b",
-      prompt_spec_hash: "0x9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e",
-      evidence_root: "0x1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b",
-      reasoning_root: "0x6f5e4d3c2b1a6f5e4d3c2b1a6f5e4d3c2b1a6f5e4d3c2b1a6f5e4d3c2b1a6f5e",
-      ok: false,
-      verification_ok: true,
-      execution_mode: "live",
-      executed_at: "2025-03-31T20:00:00Z",
-      duration_ms: 18500,
-      checks: [
-        { check_id: "chk_01", name: "WHO API access", status: "fail", message: "WHO API returned 503 for 3 consecutive attempts", requirement_id: "DR1" },
-        { check_id: "chk_02", name: "Fallback scrape", status: "warn", message: "HTML scrape succeeded but confidence degraded" },
-        { check_id: "chk_03", name: "Hash integrity", status: "pass", message: "All Merkle proofs valid" },
-      ],
-      errors: [
-        "WHO API returned 503 Service Unavailable during primary collection window (attempts: 3, backoff: 30s/60s/120s)",
-        "Fell back to HTML scraping — provenance tier downgraded from T1 to T3",
-      ],
-    },
-  },
-];
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
+    "oracle_result": null
+  }
+] as unknown as MarketCase[];
 
 export function getCaseById(id: string): MarketCase | undefined {
   return mockCases.find((c) => c.market_id === id);

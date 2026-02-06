@@ -1,6 +1,9 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { ChevronRight, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   SourceStatusBadge,
@@ -18,18 +21,87 @@ import { DeepTabs } from "@/components/detail/deep-tabs";
 import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
 import { ReasoningTraceCard } from "@/components/detail/reasoning-trace";
 import { TimelineSection } from "@/components/detail/timeline";
-import { getCaseById, mockCases } from "@/lib/mock-data";
+import { EvidenceSection } from "@/components/detail/evidence-section";
+import { fetchEventById } from "@/lib/api";
+import type { MarketCase } from "@/lib/types";
 
-export function generateStaticParams() {
-  return mockCases.map((c) => ({ id: c.market_id }));
-}
+export default function CaseDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const eventId = params.id as string;
 
-export default function CaseDetailPage({ params }: { params: { id: string } }) {
-  const c = getCaseById(params.id);
-  if (!c) notFound();
+  const [c, setCase] = useState<MarketCase | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadCase() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await fetchEventById(eventId);
+        if (!result) {
+          setError("Event not found");
+        } else {
+          setCase(result);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load event");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadCase();
+  }, [eventId]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
+          <p className="text-sm text-muted-foreground">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href="/cases" className="hover:text-foreground transition-colors">
+            Cases
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="text-foreground">Error</span>
+        </nav>
+
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-6 flex flex-col items-center gap-4">
+          <AlertCircle className="h-10 w-10 text-red-400" />
+          <div className="text-center">
+            <p className="text-lg font-medium text-red-400">
+              {error === "Event not found" ? "Event Not Found" : "Failed to Load Event"}
+            </p>
+            <p className="text-sm text-red-400/70 mt-1">{error}</p>
+          </div>
+          <button
+            onClick={() => router.push("/cases")}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+          >
+            Back to Cases
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!c) return null;
 
   // Determine layout: pending (no oracle result + unresolved) vs resolved
   const isPending = !c.oracle_result && c.source.official_outcome === "UNKNOWN";
+  const isResolved = c.oracle_result !== null;
 
   return (
     <div className="space-y-6">
@@ -84,6 +156,11 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
 
       {/* ═══ HERO: Layout A (Pending) or Layout B (Resolved) ═══ */}
       {isPending ? <HeroPending c={c} /> : <HeroResolved c={c} />}
+
+      {/* ═══ Evidence Section (resolved cases with evidence items) ═══ */}
+      {isResolved && c.oracle_result?.evidence_items && c.oracle_result.evidence_items.length > 0 && (
+        <EvidenceSection result={c.oracle_result} toolPlan={c.parse_result.tool_plan} />
+      )}
 
       {/* ═══ PROOF NARRATIVE (resolved cases only) ═══ */}
       {!isPending && c.oracle_result && <ProofNarrative c={c} />}

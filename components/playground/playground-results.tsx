@@ -9,6 +9,7 @@ import { PillarTrust } from "@/components/detail/pillar-trust";
 import { DeepTabs } from "@/components/detail/deep-tabs";
 import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
 import { ReasoningTraceCard } from "@/components/detail/reasoning-trace";
+import { EvidenceSection } from "@/components/detail/evidence-section";
 
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
@@ -51,6 +52,9 @@ export function PlaygroundResults({
   resolveResult,
   userInput,
 }: PlaygroundResultsProps) {
+  // Debug: log resolveResult to console
+  console.log("resolveResult:", JSON.stringify(resolveResult, null, 2));
+
   const c = buildSyntheticCase(promptResult, resolveResult, userInput);
   const isResolved = resolveResult !== null;
 
@@ -59,7 +63,12 @@ export function PlaygroundResults({
       {/* Hero section */}
       {isResolved ? <HeroResolved c={c} /> : <HeroPending c={c} />}
 
-      {/* Discovered Sources (resolve only) */}
+      {/* Evidence Section (resolve only) */}
+      {isResolved && resolveResult.evidence_items && resolveResult.evidence_items.length > 0 && (
+        <EvidenceSection result={resolveResult} toolPlan={promptResult.tool_plan} />
+      )}
+
+      {/* Discovered Sources (resolve only, legacy format) */}
       {isResolved && resolveResult.discovered_sources && resolveResult.discovered_sources.length > 0 && (
         <DiscoveredSourcesCard sources={resolveResult.discovered_sources} />
       )}
