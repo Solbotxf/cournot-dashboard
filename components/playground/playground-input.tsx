@@ -81,6 +81,7 @@ interface PlaygroundInputProps {
   canResolve: boolean;
   isLoading: boolean;
   compact: boolean;
+  useMultiStep?: boolean;
   // Collector options
   selectedCollectors?: string[];
   onToggleCollector?: (collectorId: string) => void;

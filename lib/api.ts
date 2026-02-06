@@ -1,6 +1,6 @@
 import type { MarketCase, ParseResult, RunSummary, Outcome, SourceStatus } from "./types";
 
-const API_BASE = "https://dev-interface.cournot.ai/play/polymarket";
+const API_BASE = "/api/proxy";
 
 export interface ApiEvent {
   event_id: number;
@@ -149,7 +149,6 @@ export async function fetchEvents(
   const url = `${API_BASE}/events?page_num=${pageNum}&page_size=${pageSize}`;
 
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
     cache: "no-store",
   });
 
@@ -185,7 +184,6 @@ export async function fetchEventById(eventId: string): Promise<MarketCase | null
     const url = `${API_BASE}/events?page_num=${page}&page_size=${pageSize}`;
 
     const res = await fetch(url, {
-      headers: { "Content-Type": "application/json" },
       cache: "no-store",
     });
 
