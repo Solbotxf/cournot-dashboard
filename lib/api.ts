@@ -1,6 +1,6 @@
 import type { MarketCase, ParseResult, RunSummary, Outcome, SourceStatus } from "./types";
 
-const API_BASE = "https://dev-interface.carv.io/play/polymarket";
+const API_BASE = "https://dev-interface.cournot.ai/play/polymarket";
 
 export interface ApiEvent {
   event_id: number;
