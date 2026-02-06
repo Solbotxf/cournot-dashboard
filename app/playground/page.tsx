@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
-const API_BASE = "https://dev-protocol.cournot.ai";
+const API_BASE = "http://localhost:8000";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -227,7 +227,7 @@ export default function PlaygroundPage() {
       const collectRes = await fetch(`${API_BASE}/step/collect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_spec: promptSpec, tool_plan: toolPlan }),
+        body: JSON.stringify({ prompt_spec: promptSpec, tool_plan: toolPlan, collector: 'CollectorHyDE' }),
       });
       if (!collectRes.ok) throw new Error(`Collect failed: ${await collectRes.text()}`);
       const collectData = await collectRes.json();
