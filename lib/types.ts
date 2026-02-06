@@ -147,6 +147,15 @@ export interface EvidenceItem {
   extracted_fields?: ExtractedFields;
 }
 
+export interface EvidenceBundle {
+  bundle_id: string;
+  market_id: string;
+  collector_name: string;
+  weight: number;
+  items: EvidenceItem[];
+  execution_time_ms?: number;
+}
+
 export type ReasoningStepType =
   | "validity_check"
   | "evidence_analysis"
@@ -215,6 +224,7 @@ export interface RunSummary {
   reasoning_summary?: string;
   justification?: string;
   evidence_items?: EvidenceItem[];
+  evidence_bundles?: EvidenceBundle[];
   reasoning_steps?: ReasoningStep[];
   confidence_breakdown?: ConfidenceBreakdown;
   llm_review?: LLMReview;

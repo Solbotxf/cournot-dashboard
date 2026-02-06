@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import type { ParseResult, RunSummary, EvidenceItem, ExecutionMode, DiscoveredSource } from "@/lib/types";
+import type { ParseResult, RunSummary, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource } from "@/lib/types";
 import { PlaygroundInput } from "@/components/playground/playground-input";
 import { PlaygroundResults } from "@/components/playground/playground-results";
 import {
@@ -60,9 +60,21 @@ function mapEvidenceItems(bundle: any): EvidenceItem[] {
   });
 }
 
-/** Build RunSummary from individual step results */
+/** Map raw evidence bundles to typed EvidenceBundle[] */
+function mapEvidenceBundles(bundles: any[]): EvidenceBundle[] {
+  return bundles.map((bundle: any) => ({
+    bundle_id: bundle.bundle_id ?? "",
+    market_id: bundle.market_id ?? "",
+    collector_name: bundle.collector_name ?? "unknown",
+    weight: bundle.weight ?? 1.0,
+    items: mapEvidenceItems(bundle),
+    execution_time_ms: bundle.execution_time_ms,
+  }));
+}
+
+/** Build RunSummary from individual step results (supports multiple bundles) */
 function buildRunSummary(
-  evidenceBundle: any,
+  evidenceBundles: any[],
   reasoningTrace: any,
   verdict: any,
   porBundle: any,
@@ -80,15 +92,28 @@ function buildRunSummary(
     dry_run: "dry_run",
   };
 
-  const evidenceItems = mapEvidenceItems(evidenceBundle);
+  // Flatten all evidence items from all bundles for backward compatibility
+  const allEvidenceItems = evidenceBundles.flatMap(bundle => mapEvidenceItems(bundle));
 
-  const discoveredSources: DiscoveredSource[] = (evidenceBundle?.items ?? []).flatMap(
-    (item: any) =>
-      (item.extracted_fields?.discovered_sources ?? []).map((ds: any) => ({
-        url: ds.url ?? "",
-        title: ds.title ?? "",
-        relevance: ds.relevance ?? "medium",
-      }))
+  // Map to typed evidence bundles
+  const typedBundles = mapEvidenceBundles(evidenceBundles);
+
+  // Collect discovered sources from all bundles
+  const discoveredSources: DiscoveredSource[] = evidenceBundles.flatMap(
+    (bundle: any) =>
+      (bundle?.items ?? []).flatMap((item: any) =>
+        (item.extracted_fields?.discovered_sources ?? []).map((ds: any) => ({
+          url: ds.url ?? "",
+          title: ds.title ?? "",
+          relevance: ds.relevance ?? "medium",
+        }))
+      )
+  );
+
+  // Total execution time from all bundles
+  const totalDurationMs = evidenceBundles.reduce(
+    (sum, bundle) => sum + (bundle?.execution_time_ms ?? 0),
+    0
   );
 
   return {
@@ -103,13 +128,14 @@ function buildRunSummary(
     verification_ok: verdictMeta.llm_review?.reasoning_valid ?? true,
     execution_mode: modeMap[porMeta.mode] ?? (porMeta.mode as ExecutionMode) ?? "dry_run",
     executed_at: porBundle?.created_at ?? new Date().toISOString(),
-    duration_ms: evidenceBundle?.execution_time_ms ?? 0,
+    duration_ms: totalDurationMs,
     checks: [],
     errors: [],
     evidence_summary: reasoningTrace?.evidence_summary,
     reasoning_summary: reasoningTrace?.reasoning_summary,
     justification: verdictMeta.justification,
-    evidence_items: evidenceItems.length > 0 ? evidenceItems : undefined,
+    evidence_items: allEvidenceItems.length > 0 ? allEvidenceItems : undefined,
+    evidence_bundles: typedBundles.length > 0 ? typedBundles : undefined,
     reasoning_steps: (reasoningTrace?.steps ?? []).length > 0 ? reasoningTrace.steps : undefined,
     llm_review: verdictMeta.llm_review
       ? {
@@ -126,8 +152,12 @@ function buildRunSummary(
 /** Map the backend /step/resolve response to the RunSummary shape (for single-call mode) */
 function toRunSummary(raw: any): RunSummary {
   const artifacts = raw.artifacts ?? {};
+  // Support both new evidence_bundles array and legacy evidence_bundle
+  const evidenceBundles = artifacts.evidence_bundles ??
+    (artifacts.evidence_bundle ? [artifacts.evidence_bundle] : []);
+
   return buildRunSummary(
-    artifacts.evidence_bundle,
+    evidenceBundles,
     artifacts.reasoning_trace,
     artifacts.verdict,
     artifacts.por_bundle,
@@ -149,6 +179,9 @@ export default function PlaygroundPage() {
   const [dataSources, setDataSources] = useState<string[]>([]);
   const [strictMode, setStrictMode] = useState(false);
 
+  // Collector selection (for multi-step mode)
+  const [selectedCollectors, setSelectedCollectors] = useState<string[]>(["CollectorLLM"]);
+
   // Results
   const [promptResult, setPromptResult] = useState<ParseResult | null>(null);
   const [resolveResult, setResolveResult] = useState<RunSummary | null>(null);
@@ -168,9 +201,21 @@ export default function PlaygroundPage() {
     setResolutionDeadline("");
     setDataSources([]);
     setStrictMode(false);
+    setSelectedCollectors(["CollectorLLM"]);
     setPromptResult(null);
     setResolveResult(null);
     setPipelineSteps(createInitialSteps());
+  }
+
+  function toggleCollector(collectorId: string) {
+    setSelectedCollectors((prev) => {
+      if (prev.includes(collectorId)) {
+        // Don't allow deselecting all collectors
+        if (prev.length === 1) return prev;
+        return prev.filter((c) => c !== collectorId);
+      }
+      return [...prev, collectorId];
+    });
   }
 
   async function handlePrompt() {
@@ -222,38 +267,45 @@ export default function PlaygroundPage() {
     const toolPlan = promptResult.tool_plan;
 
     try {
-      // Step 2: Collect
+      // Step 2: Collect (with multiple collectors)
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "running"));
       const collectRes = await fetch(`${API_BASE}/step/collect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_spec: promptSpec, tool_plan: toolPlan, collector: 'CollectorHyDE' }),
+        body: JSON.stringify({
+          prompt_spec: promptSpec,
+          tool_plan: toolPlan,
+          collectors: selectedCollectors, // Use array of collectors
+        }),
       });
       if (!collectRes.ok) throw new Error(`Collect failed: ${await collectRes.text()}`);
       const collectData = await collectRes.json();
-      const evidenceBundle = collectData.evidence_bundle;
+      const evidenceBundles = collectData.evidence_bundles; // Now an array
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "completed"));
 
-      // Step 3: Audit
+      // Step 3: Audit (pass array of bundles)
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "running"));
       const auditRes = await fetch(`${API_BASE}/step/audit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt_spec: promptSpec, evidence_bundle: evidenceBundle }),
+        body: JSON.stringify({
+          prompt_spec: promptSpec,
+          evidence_bundles: evidenceBundles, // Array
+        }),
       });
       if (!auditRes.ok) throw new Error(`Audit failed: ${await auditRes.text()}`);
       const auditData = await auditRes.json();
       const reasoningTrace = auditData.reasoning_trace;
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "completed"));
 
-      // Step 4: Judge
+      // Step 4: Judge (pass array of bundles)
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "running"));
       const judgeRes = await fetch(`${API_BASE}/step/judge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt_spec: promptSpec,
-          evidence_bundle: evidenceBundle,
+          evidence_bundles: evidenceBundles, // Array
           reasoning_trace: reasoningTrace,
         }),
       });
@@ -264,14 +316,14 @@ export default function PlaygroundPage() {
       const confidence = judgeData.confidence;
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "completed"));
 
-      // Step 5: Bundle
+      // Step 5: Bundle (pass array of bundles)
       setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "running"));
       const bundleRes = await fetch(`${API_BASE}/step/bundle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt_spec: promptSpec,
-          evidence_bundle: evidenceBundle,
+          evidence_bundles: evidenceBundles, // Array
           reasoning_trace: reasoningTrace,
           verdict: verdict,
         }),
@@ -284,7 +336,7 @@ export default function PlaygroundPage() {
 
       // Build final result
       const summary = buildRunSummary(
-        evidenceBundle,
+        evidenceBundles,
         reasoningTrace,
         verdict,
         porBundle,
@@ -413,6 +465,9 @@ export default function PlaygroundPage() {
             }
             isLoading={isLoading}
             compact={hasResults}
+            useMultiStep={useMultiStep}
+            selectedCollectors={selectedCollectors}
+            onToggleCollector={toggleCollector}
           />
         </div>
       </div>

@@ -20,6 +20,7 @@ import {
   Sparkles,
   Play,
   Settings2,
+  Layers,
 } from "lucide-react";
 
 const TEMPLATES = [
@@ -54,6 +55,14 @@ const DEFAULT_SOURCES = [
   "Wikipedia",
 ];
 
+// Available collectors for multi-step mode
+const AVAILABLE_COLLECTORS = [
+  { id: "CollectorLLM", name: "LLM", description: "AI-powered evidence collection" },
+  { id: "CollectorHyDE", name: "HyDE", description: "Hypothetical Document Embeddings" },
+  { id: "CollectorHTTP", name: "HTTP", description: "Direct HTTP fetching" },
+  { id: "CollectorMock", name: "Mock", description: "Mock data for testing" },
+];
+
 interface PlaygroundInputProps {
   userInput: string;
   onUserInputChange: (v: string) => void;
@@ -72,6 +81,10 @@ interface PlaygroundInputProps {
   canResolve: boolean;
   isLoading: boolean;
   compact: boolean;
+  // Multi-step collector options
+  useMultiStep?: boolean;
+  selectedCollectors?: string[];
+  onToggleCollector?: (collectorId: string) => void;
 }
 
 export function PlaygroundInput({
@@ -92,6 +105,9 @@ export function PlaygroundInput({
   canResolve,
   isLoading,
   compact,
+  useMultiStep = false,
+  selectedCollectors = ["CollectorLLM"],
+  onToggleCollector,
 }: PlaygroundInputProps) {
   const [configOpen, setConfigOpen] = useState(!compact);
 
@@ -280,28 +296,90 @@ export function PlaygroundInput({
         </Collapsible>
 
         {/* Action Buttons */}
-        <div className={cn("flex gap-2", compact ? "pt-0" : "pt-2")}>
-          <button
-            onClick={onPrompt}
-            disabled={!userInput.trim() || isLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            Prompt
-          </button>
-          <button
-            onClick={onResolve}
-            disabled={!canResolve || isLoading}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-              canResolve && !isLoading
-                ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-            )}
-          >
-            <Play className="h-3.5 w-3.5" />
-            Resolve
-          </button>
+        <div className={cn("space-y-3", compact ? "pt-0" : "pt-2")}>
+          {/* Collector Selection (appears when multi-step mode + prompt done) */}
+          {useMultiStep && canResolve && onToggleCollector && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Layers className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs font-medium text-emerald-400">Evidence Collectors</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {selectedCollectors.length} selected
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {AVAILABLE_COLLECTORS.map((collector) => {
+                  const isSelected = selectedCollectors.includes(collector.id);
+                  return (
+                    <button
+                      key={collector.id}
+                      onClick={() => onToggleCollector(collector.id)}
+                      disabled={isLoading}
+                      title={collector.description}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                        isSelected
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : "bg-muted/30 text-muted-foreground border border-border/50 hover:border-emerald-500/30 hover:text-emerald-300",
+                        isLoading && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "w-3 h-3 rounded-sm border flex items-center justify-center",
+                          isSelected
+                            ? "border-emerald-400 bg-emerald-500"
+                            : "border-muted-foreground/40"
+                        )}
+                      >
+                        {isSelected && (
+                          <svg
+                            className="w-2 h-2 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      {collector.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={onPrompt}
+              disabled={!userInput.trim() || isLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Prompt
+            </button>
+            <button
+              onClick={onResolve}
+              disabled={!canResolve || isLoading}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                canResolve && !isLoading
+                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              <Play className="h-3.5 w-3.5" />
+              Resolve
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>

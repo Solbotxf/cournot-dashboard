@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ErrorCallout } from "@/components/shared/error-callout";
 import { InlineCopyButton } from "@/components/shared/copy-field";
-import type { RunSummary, Check, ToolPlan, EvidenceItem } from "@/lib/types";
+import type { RunSummary, Check, ToolPlan, EvidenceItem, EvidenceBundle } from "@/lib/types";
 import {
   ChevronDown,
   CheckCircle2,
@@ -17,6 +17,8 @@ import {
   FileText,
   ExternalLink,
   Shield,
+  Layers,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -144,8 +146,33 @@ export function EvidenceSection({
           </div>
         )}
 
-        {/* Evidence items */}
-        {result.evidence_items && result.evidence_items.length > 0 && (
+        {/* Evidence Bundles (new multi-collector format) */}
+        {result.evidence_bundles && result.evidence_bundles.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-violet-400" />
+                  <p className="text-sm font-medium">
+                    Evidence Bundles ({result.evidence_bundles.length})
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {result.evidence_bundles.reduce((sum, b) => sum + b.items.length, 0)} total items
+                </p>
+              </div>
+              <div className="space-y-4">
+                {result.evidence_bundles.map((bundle) => (
+                  <EvidenceBundleCard key={bundle.bundle_id} bundle={bundle} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Legacy: Evidence items (single bundle format) */}
+        {!result.evidence_bundles && result.evidence_items && result.evidence_items.length > 0 && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -179,6 +206,82 @@ export function EvidenceSection({
         {result.errors.length > 0 && <ErrorCallout errors={result.errors} />}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Evidence Bundle Card ─────────────────────────────────────────────────
+
+const collectorColors: Record<string, string> = {
+  CollectorLLM: "text-violet-400 border-violet-500/30 bg-violet-500/10",
+  CollectorHyDE: "text-sky-400 border-sky-500/30 bg-sky-500/10",
+  CollectorHTTP: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+  CollectorMock: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
+};
+
+function EvidenceBundleCard({ bundle }: { bundle: EvidenceBundle }) {
+  const [expanded, setExpanded] = useState(true);
+  const colorClass = collectorColors[bundle.collector_name] ?? "text-muted-foreground border-border bg-muted/20";
+
+  return (
+    <div className="rounded-xl border border-border/50 overflow-hidden">
+      {/* Bundle Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/30 transition-colors"
+      >
+        <div className={cn("p-2 rounded-lg border", colorClass)}>
+          <Layers className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">{bundle.collector_name}</p>
+            <Badge variant="outline" className={cn("text-[10px]", colorClass)}>
+              {bundle.items.length} items
+            </Badge>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5">
+            {bundle.execution_time_ms !== undefined && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {bundle.execution_time_ms}ms
+              </span>
+            )}
+            <span className="text-[10px] text-muted-foreground">
+              Weight: {bundle.weight.toFixed(1)}
+            </span>
+          </div>
+        </div>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      {/* Bundle Content */}
+      {expanded && (
+        <div className="border-t border-border/50 p-4 bg-muted/5 space-y-3">
+          {bundle.items.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              No evidence items collected
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {bundle.items.map((item, idx) => (
+                <EvidenceItemCard key={item.evidence_id || idx} item={item} />
+              ))}
+            </div>
+          )}
+
+          {/* Bundle metadata */}
+          <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-2 border-t border-border/30">
+            <span className="font-mono">ID: {bundle.bundle_id.slice(0, 16)}...</span>
+            <InlineCopyButton value={bundle.bundle_id} label="Bundle ID" />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

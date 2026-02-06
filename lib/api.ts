@@ -101,6 +101,7 @@ export function transformEventToCase(event: ApiEvent): MarketCase {
           reasoning_summary: parsed.reasoning_summary,
           justification: parsed.justification,
           evidence_items: parsed.evidence_items,
+          evidence_bundles: parsed.evidence_bundles,
           reasoning_steps: parsed.reasoning_steps,
           confidence_breakdown: parsed.confidence_breakdown,
           llm_review: parsed.llm_review,
