@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://dev-protocol.cournot.ai";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -368,7 +368,6 @@ export default function PlaygroundPage() {
         body: JSON.stringify({
           prompt_spec: promptResult.prompt_spec,
           tool_plan: promptResult.tool_plan,
-          collectors: selectedCollectors, // Pass selected collectors
           execution_mode: "development",
         }),
       });
@@ -466,6 +465,7 @@ export default function PlaygroundPage() {
             }
             isLoading={isLoading}
             compact={hasResults}
+            useMultiStep={useMultiStep}
             selectedCollectors={selectedCollectors}
             onToggleCollector={toggleCollector}
           />
