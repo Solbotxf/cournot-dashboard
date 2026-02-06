@@ -81,8 +81,7 @@ interface PlaygroundInputProps {
   canResolve: boolean;
   isLoading: boolean;
   compact: boolean;
-  // Multi-step collector options
-  useMultiStep?: boolean;
+  // Collector options
   selectedCollectors?: string[];
   onToggleCollector?: (collectorId: string) => void;
 }
@@ -105,7 +104,6 @@ export function PlaygroundInput({
   canResolve,
   isLoading,
   compact,
-  useMultiStep = false,
   selectedCollectors = ["CollectorLLM"],
   onToggleCollector,
 }: PlaygroundInputProps) {
@@ -297,8 +295,8 @@ export function PlaygroundInput({
 
         {/* Action Buttons */}
         <div className={cn("space-y-3", compact ? "pt-0" : "pt-2")}>
-          {/* Collector Selection (appears when multi-step mode + prompt done) */}
-          {useMultiStep && canResolve && onToggleCollector && (
+          {/* Collector Selection (appears when prompt is done) */}
+          {canResolve && onToggleCollector && (
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Layers className="h-3.5 w-3.5 text-emerald-400" />

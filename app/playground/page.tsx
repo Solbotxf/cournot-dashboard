@@ -368,6 +368,7 @@ export default function PlaygroundPage() {
         body: JSON.stringify({
           prompt_spec: promptResult.prompt_spec,
           tool_plan: promptResult.tool_plan,
+          collectors: selectedCollectors, // Pass selected collectors
           execution_mode: "development",
         }),
       });
@@ -465,7 +466,6 @@ export default function PlaygroundPage() {
             }
             isLoading={isLoading}
             compact={hasResults}
-            useMultiStep={useMultiStep}
             selectedCollectors={selectedCollectors}
             onToggleCollector={toggleCollector}
           />
