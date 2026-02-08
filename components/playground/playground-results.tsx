@@ -8,7 +8,6 @@ import { PillarPerformance } from "@/components/detail/pillar-performance";
 import { PillarTrust } from "@/components/detail/pillar-trust";
 import { DeepTabs } from "@/components/detail/deep-tabs";
 import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
-import { ReasoningTraceCard } from "@/components/detail/reasoning-trace";
 import { EvidenceSection } from "@/components/detail/evidence-section";
 import { ExecutionLogsCard } from "@/components/detail/execution-logs";
 
@@ -79,15 +78,6 @@ export function PlaygroundResults({
       {/* Discovered Sources (resolve only, legacy format) */}
       {isResolved && resolveResult.discovered_sources && resolveResult.discovered_sources.length > 0 && (
         <DiscoveredSourcesCard sources={resolveResult.discovered_sources} />
-      )}
-
-      {/* Reasoning Trace (resolve only) */}
-      {isResolved && resolveResult.reasoning_steps && resolveResult.reasoning_steps.length > 0 && (
-        <ReasoningTraceCard
-          steps={resolveResult.reasoning_steps}
-          evidenceSummary={resolveResult.evidence_summary}
-          reasoningSummary={resolveResult.reasoning_summary}
-        />
       )}
 
       {/* Pillars */}
