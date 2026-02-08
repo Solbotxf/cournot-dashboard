@@ -1,6 +1,6 @@
 "use client";
 
-import type { MarketCase, ParseResult, RunSummary } from "@/lib/types";
+import type { MarketCase, ParseResult, RunSummary, ExecutionLog } from "@/lib/types";
 import { HeroPending } from "@/components/detail/hero-pending";
 import { HeroResolved } from "@/components/detail/hero-resolved";
 import { PillarUnderstanding } from "@/components/detail/pillar-understanding";
@@ -10,11 +10,13 @@ import { DeepTabs } from "@/components/detail/deep-tabs";
 import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
 import { ReasoningTraceCard } from "@/components/detail/reasoning-trace";
 import { EvidenceSection } from "@/components/detail/evidence-section";
+import { ExecutionLogsCard } from "@/components/detail/execution-logs";
 
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
   resolveResult: RunSummary | null;
   userInput: string;
+  executionLogs?: ExecutionLog[];
 }
 
 function buildSyntheticCase(
@@ -51,6 +53,7 @@ export function PlaygroundResults({
   promptResult,
   resolveResult,
   userInput,
+  executionLogs = [],
 }: PlaygroundResultsProps) {
   // Debug: log resolveResult to console
   console.log("resolveResult:", JSON.stringify(resolveResult, null, 2));
@@ -66,6 +69,11 @@ export function PlaygroundResults({
       {/* Evidence Section (resolve only) */}
       {isResolved && resolveResult.evidence_items && resolveResult.evidence_items.length > 0 && (
         <EvidenceSection result={resolveResult} toolPlan={promptResult.tool_plan} />
+      )}
+
+      {/* Execution Logs (from collect step) */}
+      {executionLogs.length > 0 && (
+        <ExecutionLogsCard logs={executionLogs} />
       )}
 
       {/* Discovered Sources (resolve only, legacy format) */}

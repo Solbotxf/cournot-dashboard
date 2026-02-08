@@ -369,6 +369,14 @@ export function PlaygroundInput({
                   );
                 })}
               </div>
+              {selectedCollectors.some((c) => c.toLowerCase().includes("graphrag")) && (
+                <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5">
+                  <span className="text-amber-400 text-sm leading-none mt-0.5">&#9888;</span>
+                  <span className="text-[11px] text-amber-300/90">
+                    GraphRAG builds a knowledge graph before reasoning. This may take a few minutes to resolve.
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

@@ -206,6 +206,22 @@ export interface ExecutionStep {
   latency_ms: number;
 }
 
+export interface ExecutionLogCall {
+  tool: string;
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  started_at: string;
+  ended_at: string;
+  error: string | null;
+}
+
+export interface ExecutionLog {
+  plan_id: string;
+  calls: ExecutionLogCall[];
+  started_at: string;
+  ended_at: string;
+}
+
 export interface DiscoveredSource {
   url: string;
   title: string;
