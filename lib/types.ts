@@ -121,16 +121,24 @@ export interface Check {
 }
 
 export interface EvidenceSource {
-  source_id: string;
+  source_id: string | null;
   url: string;
-  credibility_tier: string;
-  relevance_reason: string;
+  credibility_tier: number;
+  key_fact: string;
+  supports: "YES" | "NO" | "N/A";
+  date_published: string | null;
 }
 
 export interface ExtractedFields {
   confidence_score?: number;
   resolution_status?: string;
   evidence_sources?: EvidenceSource[];
+  // Collector-specific extras
+  hypothesis_match?: string;
+  discrepancies?: string[];
+  hypothetical_document?: string;
+  conflicts?: string[];
+  missing_info?: string[];
 }
 
 export interface EvidenceItem {

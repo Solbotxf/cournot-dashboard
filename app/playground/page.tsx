@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { ParseResult, RunSummary, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource } from "@/lib/types";
 import { PlaygroundInput } from "@/components/playground/playground-input";
@@ -13,9 +13,21 @@ import {
 } from "@/components/playground/pipeline-progress";
 import { cn } from "@/lib/utils";
 
+interface ProviderInfo {
+  provider: string;
+  default_model: string;
+}
+
+interface CollectorInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
-const API_BASE = "https://dev-protocol.cournot.ai";
+// const API_BASE = "https://dev-protocol.cournot.ai";
+const API_BASE = "http://localhost:8000";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -50,11 +62,18 @@ function mapEvidenceItems(bundle: any): EvidenceItem[] {
         confidence_score: item.extracted_fields.confidence_score,
         resolution_status: item.extracted_fields.resolution_status,
         evidence_sources: (item.extracted_fields.evidence_sources ?? []).map((es: any) => ({
-          source_id: es.source_id ?? "",
+          source_id: es.source_id ?? null,
           url: es.url ?? "",
-          credibility_tier: es.credibility_tier ?? "",
-          relevance_reason: es.relevance_reason ?? "",
+          credibility_tier: typeof es.credibility_tier === "number" ? es.credibility_tier : 3,
+          key_fact: es.key_fact ?? "",
+          supports: es.supports ?? "N/A",
+          date_published: es.date_published ?? null,
         })),
+        hypothesis_match: item.extracted_fields.hypothesis_match,
+        discrepancies: item.extracted_fields.discrepancies,
+        hypothetical_document: item.extracted_fields.hypothetical_document,
+        conflicts: item.extracted_fields.conflicts,
+        missing_info: item.extracted_fields.missing_info,
       } : undefined,
     };
   });
@@ -180,7 +199,45 @@ export default function PlaygroundPage() {
   const [strictMode, setStrictMode] = useState(false);
 
   // Collector selection (for multi-step mode)
-  const [selectedCollectors, setSelectedCollectors] = useState<string[]>(["CollectorLLM"]);
+  const [availableCollectors, setAvailableCollectors] = useState<CollectorInfo[]>([]);
+  const [selectedCollectors, setSelectedCollectors] = useState<string[]>([]);
+
+  // LLM provider/model selection
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState("");
+
+  // Fetch capabilities on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/capabilities`)
+      .then((res) => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+      .then((data) => {
+        if (Array.isArray(data.providers)) {
+          setProviders(data.providers);
+        }
+        if (Array.isArray(data.steps)) {
+          const collectorStep = data.steps.find((s: any) => s.step === "collector");
+          if (collectorStep && Array.isArray(collectorStep.agents)) {
+            const collectors: CollectorInfo[] = collectorStep.agents.map((a: any) => ({
+              id: a.name,
+              name: (a.name as string).replace(/^Collector/, ""),
+              description: a.description ?? "",
+            }));
+            setAvailableCollectors(collectors);
+            // Default to first non-fallback collector if available
+            const defaultCollector = collectorStep.agents.find((a: any) => !a.is_fallback);
+            if (defaultCollector) {
+              setSelectedCollectors([defaultCollector.name]);
+            } else if (collectors.length > 0) {
+              setSelectedCollectors([collectors[0].id]);
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch capabilities:", err);
+      });
+  }, []);
 
   // Results
   const [promptResult, setPromptResult] = useState<ParseResult | null>(null);
@@ -201,7 +258,9 @@ export default function PlaygroundPage() {
     setResolutionDeadline("");
     setDataSources([]);
     setStrictMode(false);
-    setSelectedCollectors(["CollectorLLM"]);
+    setSelectedCollectors(availableCollectors.length > 0 ? [availableCollectors[0].id] : []);
+    setSelectedProvider(null);
+    setSelectedModel("");
     setPromptResult(null);
     setResolveResult(null);
     setPipelineSteps(createInitialSteps());
@@ -234,6 +293,8 @@ export default function PlaygroundPage() {
         body: JSON.stringify({
           user_input: userInput,
           strict_mode: strictMode,
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
         }),
       });
 
@@ -276,6 +337,8 @@ export default function PlaygroundPage() {
           prompt_spec: promptSpec,
           tool_plan: toolPlan,
           collectors: selectedCollectors, // Use array of collectors
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
         }),
       });
       if (!collectRes.ok) throw new Error(`Collect failed: ${await collectRes.text()}`);
@@ -291,6 +354,8 @@ export default function PlaygroundPage() {
         body: JSON.stringify({
           prompt_spec: promptSpec,
           evidence_bundles: evidenceBundles, // Array
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
         }),
       });
       if (!auditRes.ok) throw new Error(`Audit failed: ${await auditRes.text()}`);
@@ -307,6 +372,8 @@ export default function PlaygroundPage() {
           prompt_spec: promptSpec,
           evidence_bundles: evidenceBundles, // Array
           reasoning_trace: reasoningTrace,
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
         }),
       });
       if (!judgeRes.ok) throw new Error(`Judge failed: ${await judgeRes.text()}`);
@@ -369,6 +436,8 @@ export default function PlaygroundPage() {
           prompt_spec: promptResult.prompt_spec,
           tool_plan: promptResult.tool_plan,
           execution_mode: "development",
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
         }),
       });
 
@@ -466,8 +535,14 @@ export default function PlaygroundPage() {
             isLoading={isLoading}
             compact={hasResults}
             useMultiStep={useMultiStep}
+            availableCollectors={availableCollectors}
             selectedCollectors={selectedCollectors}
             onToggleCollector={toggleCollector}
+            providers={providers}
+            selectedProvider={selectedProvider}
+            selectedModel={selectedModel}
+            onProviderChange={setSelectedProvider}
+            onModelChange={setSelectedModel}
           />
         </div>
       </div>

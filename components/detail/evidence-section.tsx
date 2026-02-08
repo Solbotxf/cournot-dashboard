@@ -287,12 +287,24 @@ function EvidenceBundleCard({ bundle }: { bundle: EvidenceBundle }) {
 
 // ─── Evidence Item Card ───────────────────────────────────────────────────
 
-function getTierColor(tier: string): string {
-  if (tier.includes("1")) return "text-emerald-400 border-emerald-500/20 bg-emerald-500/10";
-  if (tier.includes("2")) return "text-sky-400 border-sky-500/20 bg-sky-500/10";
-  if (tier.includes("3")) return "text-yellow-400 border-yellow-500/20 bg-yellow-500/10";
+function getTierColor(tier: number): string {
+  if (tier === 1) return "text-emerald-400 border-emerald-500/20 bg-emerald-500/10";
+  if (tier === 2) return "text-sky-400 border-sky-500/20 bg-sky-500/10";
+  if (tier === 3) return "text-yellow-400 border-yellow-500/20 bg-yellow-500/10";
   return "text-muted-foreground border-border";
 }
+
+function getSupportsColor(supports: string): string {
+  if (supports === "YES") return "text-emerald-400 border-emerald-500/20 bg-emerald-500/10";
+  if (supports === "NO") return "text-red-400 border-red-500/20 bg-red-500/10";
+  return "text-muted-foreground border-border";
+}
+
+const TIER_LABELS: Record<number, string> = {
+  1: "Tier 1 — Authoritative",
+  2: "Tier 2 — Reputable",
+  3: "Tier 3 — Low-confidence",
+};
 
 function EvidenceItemCard({ item }: { item: EvidenceItem }) {
   // Start expanded if there are evidence sources to show
@@ -405,16 +417,29 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
                     className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <Badge variant="outline" className="text-[10px] font-mono shrink-0">
-                          {source.source_id}
-                        </Badge>
+                      <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                        {source.source_id && (
+                          <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                            {source.source_id}
+                          </Badge>
+                        )}
                         <Badge
                           variant="outline"
                           className={cn("text-[10px] font-medium shrink-0", getTierColor(source.credibility_tier))}
                         >
-                          {source.credibility_tier}
+                          {TIER_LABELS[source.credibility_tier] ?? `Tier ${source.credibility_tier}`}
                         </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[10px] font-medium shrink-0", getSupportsColor(source.supports))}
+                        >
+                          {source.supports}
+                        </Badge>
+                        {source.date_published && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {source.date_published}
+                          </span>
+                        )}
                       </div>
                       {source.url && (
                         <a
@@ -434,9 +459,9 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
                         {source.url}
                       </p>
                     )}
-                    {source.relevance_reason && (
+                    {source.key_fact && (
                       <p className="text-xs text-foreground/70 leading-relaxed">
-                        {source.relevance_reason}
+                        {source.key_fact}
                       </p>
                     )}
                   </div>

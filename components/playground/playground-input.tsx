@@ -21,7 +21,13 @@ import {
   Play,
   Settings2,
   Layers,
+  Cpu,
 } from "lucide-react";
+
+interface ProviderInfo {
+  provider: string;
+  default_model: string;
+}
 
 const TEMPLATES = [
   {
@@ -55,13 +61,11 @@ const DEFAULT_SOURCES = [
   "Wikipedia",
 ];
 
-// Available collectors for multi-step mode
-const AVAILABLE_COLLECTORS = [
-  { id: "CollectorLLM", name: "LLM", description: "AI-powered evidence collection" },
-  { id: "CollectorHyDE", name: "HyDE", description: "Hypothetical Document Embeddings" },
-  { id: "CollectorHTTP", name: "HTTP", description: "Direct HTTP fetching" },
-  { id: "CollectorMock", name: "Mock", description: "Mock data for testing" },
-];
+interface CollectorInfo {
+  id: string;
+  name: string;
+  description: string;
+}
 
 interface PlaygroundInputProps {
   userInput: string;
@@ -83,8 +87,15 @@ interface PlaygroundInputProps {
   compact: boolean;
   useMultiStep?: boolean;
   // Collector options
+  availableCollectors?: CollectorInfo[];
   selectedCollectors?: string[];
   onToggleCollector?: (collectorId: string) => void;
+  // LLM provider/model selection
+  providers?: ProviderInfo[];
+  selectedProvider?: string | null;
+  selectedModel?: string;
+  onProviderChange?: (provider: string | null) => void;
+  onModelChange?: (model: string) => void;
 }
 
 export function PlaygroundInput({
@@ -105,8 +116,14 @@ export function PlaygroundInput({
   canResolve,
   isLoading,
   compact,
-  selectedCollectors = ["CollectorLLM"],
+  availableCollectors = [],
+  selectedCollectors = [],
   onToggleCollector,
+  providers = [],
+  selectedProvider = null,
+  selectedModel = "",
+  onProviderChange,
+  onModelChange,
 }: PlaygroundInputProps) {
   const [configOpen, setConfigOpen] = useState(!compact);
 
@@ -297,7 +314,7 @@ export function PlaygroundInput({
         {/* Action Buttons */}
         <div className={cn("space-y-3", compact ? "pt-0" : "pt-2")}>
           {/* Collector Selection (appears when prompt is done) */}
-          {canResolve && onToggleCollector && (
+          {canResolve && onToggleCollector && availableCollectors.length > 0 && (
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Layers className="h-3.5 w-3.5 text-emerald-400" />
@@ -307,7 +324,7 @@ export function PlaygroundInput({
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {AVAILABLE_COLLECTORS.map((collector) => {
+                {availableCollectors.map((collector) => {
                   const isSelected = selectedCollectors.includes(collector.id);
                   return (
                     <button
@@ -351,6 +368,61 @@ export function PlaygroundInput({
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* LLM Provider/Model Selection (appears when prompt is done) */}
+          {canResolve && providers.length > 0 && onProviderChange && onModelChange && (
+            <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-3.5 w-3.5 text-violet-400" />
+                <span className="text-xs font-medium text-violet-400">LLM Provider</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {selectedProvider ?? "server default"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={selectedProvider ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value || null;
+                    onProviderChange(value);
+                    if (value) {
+                      const info = providers.find((p) => p.provider === value);
+                      if (info) onModelChange(info.default_model);
+                    } else {
+                      onModelChange("");
+                    }
+                  }}
+                  disabled={isLoading}
+                  className={cn(
+                    "rounded-md border bg-muted/20 px-2.5 py-1 text-xs transition-colors",
+                    "border-violet-500/30 focus:border-violet-500/50 focus:outline-none",
+                    isLoading && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <option value="">Server Default</option>
+                  {providers.map((p) => (
+                    <option key={p.provider} value={p.provider}>
+                      {p.provider}
+                    </option>
+                  ))}
+                </select>
+                {selectedProvider && (
+                  <input
+                    type="text"
+                    value={selectedModel}
+                    onChange={(e) => onModelChange(e.target.value)}
+                    placeholder="Model name"
+                    disabled={isLoading}
+                    className={cn(
+                      "rounded-md border bg-muted/20 px-2.5 py-1 text-xs transition-colors flex-1 min-w-[200px]",
+                      "border-violet-500/30 focus:border-violet-500/50 focus:outline-none",
+                      isLoading && "opacity-50 cursor-not-allowed"
+                    )}
+                  />
+                )}
               </div>
             </div>
           )}
