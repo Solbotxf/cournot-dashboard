@@ -26,8 +26,8 @@ interface CollectorInfo {
 
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
-// const API_BASE = "https://dev-protocol.cournot.ai";
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://dev-protocol.cournot.ai";
+// const API_BASE = "http://localhost:8000";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
