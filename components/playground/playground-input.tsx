@@ -1,25 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
-  ChevronDown,
-  Plus,
-  X,
   Sparkles,
   Play,
-  Settings2,
   Layers,
   Cpu,
 } from "lucide-react";
@@ -52,15 +38,6 @@ const TEMPLATES = [
   },
 ];
 
-const DEFAULT_SOURCES = [
-  "Associated Press",
-  "Reuters",
-  "Bloomberg",
-  "ESPN",
-  "Official Gov",
-  "Wikipedia",
-];
-
 interface CollectorInfo {
   id: string;
   name: string;
@@ -70,16 +47,6 @@ interface CollectorInfo {
 interface PlaygroundInputProps {
   userInput: string;
   onUserInputChange: (v: string) => void;
-  predictionType: string;
-  onPredictionTypeChange: (v: string) => void;
-  multiSelectChoices: string[];
-  onMultiSelectChoicesChange: (v: string[]) => void;
-  resolutionDeadline: string;
-  onResolutionDeadlineChange: (v: string) => void;
-  dataSources: string[];
-  onDataSourcesChange: (v: string[]) => void;
-  strictMode: boolean;
-  onStrictModeChange: (v: boolean) => void;
   onPrompt: () => void;
   onResolve: () => void;
   canResolve: boolean;
@@ -101,16 +68,6 @@ interface PlaygroundInputProps {
 export function PlaygroundInput({
   userInput,
   onUserInputChange,
-  predictionType,
-  onPredictionTypeChange,
-  multiSelectChoices,
-  onMultiSelectChoicesChange,
-  resolutionDeadline,
-  onResolutionDeadlineChange,
-  dataSources,
-  onDataSourcesChange,
-  strictMode,
-  onStrictModeChange,
   onPrompt,
   onResolve,
   canResolve,
@@ -125,29 +82,6 @@ export function PlaygroundInput({
   onProviderChange,
   onModelChange,
 }: PlaygroundInputProps) {
-  const [configOpen, setConfigOpen] = useState(!compact);
-
-  const toggleSource = (source: string) => {
-    if (dataSources.includes(source)) {
-      onDataSourcesChange(dataSources.filter((s) => s !== source));
-    } else {
-      onDataSourcesChange([...dataSources, source]);
-    }
-  };
-
-  const addChoice = () => {
-    onMultiSelectChoicesChange([...multiSelectChoices, ""]);
-  };
-
-  const removeChoice = (index: number) => {
-    onMultiSelectChoicesChange(multiSelectChoices.filter((_, i) => i !== index));
-  };
-
-  const updateChoice = (index: number, value: string) => {
-    const updated = [...multiSelectChoices];
-    updated[index] = value;
-    onMultiSelectChoicesChange(updated);
-  };
 
   return (
     <Card className="border-border/50 overflow-hidden">
@@ -186,130 +120,6 @@ export function PlaygroundInput({
           )}
           disabled={isLoading}
         />
-
-        {/* Collapsible Config */}
-        <Collapsible open={configOpen} onOpenChange={setConfigOpen}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
-            <Settings2 className="h-3.5 w-3.5" />
-            <span className="font-medium">Configuration</span>
-            <ChevronDown
-              className={cn(
-                "h-3 w-3 ml-auto transition-transform",
-                configOpen && "rotate-180"
-              )}
-            />
-          </CollapsibleTrigger>
-
-          <CollapsibleContent className="pt-3 space-y-4">
-            {/* Prediction Type */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Prediction Type
-              </label>
-              <ToggleGroup
-                type="single"
-                value={predictionType}
-                onValueChange={(v) => v && onPredictionTypeChange(v)}
-                className="justify-start"
-              >
-                <ToggleGroupItem
-                  value="binary"
-                  className="text-xs px-3 py-1 h-7 data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300"
-                >
-                  Binary
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="multi_select"
-                  className="text-xs px-3 py-1 h-7 data-[state=on]:bg-violet-500/20 data-[state=on]:text-violet-300"
-                >
-                  Multi-select
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            {/* Multi-select choices */}
-            {predictionType === "multi_select" && (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Choices
-                </label>
-                <div className="space-y-1.5">
-                  {multiSelectChoices.map((choice, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <Input
-                        value={choice}
-                        onChange={(e) => updateChoice(i, e.target.value)}
-                        placeholder={`Choice ${i + 1}`}
-                        className="h-7 text-xs bg-muted/20"
-                      />
-                      <button
-                        onClick={() => removeChoice(i)}
-                        className="p-1 rounded text-muted-foreground hover:text-red-400 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={addChoice}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-violet-400 transition-colors"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add choice
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Resolution Deadline */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Resolution Deadline
-              </label>
-              <Input
-                type="date"
-                value={resolutionDeadline}
-                onChange={(e) => onResolutionDeadlineChange(e.target.value)}
-                className="h-7 text-xs bg-muted/20 w-48"
-              />
-            </div>
-
-            {/* Data Sources */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Data Sources
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {DEFAULT_SOURCES.map((source) => (
-                  <Badge
-                    key={source}
-                    variant={dataSources.includes(source) ? "default" : "outline"}
-                    className={cn(
-                      "text-[10px] cursor-pointer transition-colors select-none",
-                      dataSources.includes(source)
-                        ? "bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 border-violet-500/30"
-                        : "hover:border-violet-500/30 hover:text-violet-300"
-                    )}
-                    onClick={() => toggleSource(source)}
-                  >
-                    {source}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Strict Mode */}
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={strictMode}
-                onCheckedChange={onStrictModeChange}
-              />
-              <label className="text-xs text-muted-foreground">
-                Strict mode
-              </label>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
 
         {/* Action Buttons */}
         <div className={cn("space-y-3", compact ? "pt-0" : "pt-2")}>

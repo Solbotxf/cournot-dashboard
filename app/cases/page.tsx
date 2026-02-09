@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { CaseTableView } from "@/components/cases/case-table";
+import { defaultFilters, type FilterState } from "@/components/cases/case-filters";
 import { fetchEvents } from "@/lib/api";
 import type { MarketCase } from "@/lib/types";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
@@ -11,6 +12,7 @@ export default function CasesPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +20,11 @@ export default function CasesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await fetchEvents(page, pageSize);
+      const apiFilters: { source?: string; match_result?: string } = {};
+      if (filters.source !== "ALL") apiFilters.source = filters.source;
+      if (filters.matchResult !== "ALL") apiFilters.match_result = filters.matchResult;
+
+      const result = await fetchEvents(page, pageSize, apiFilters);
       setCases(result.cases);
       setTotal(result.total);
     } catch (err) {
@@ -26,7 +32,7 @@ export default function CasesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, filters.source, filters.matchResult]);
 
   useEffect(() => {
     loadData();
@@ -38,7 +44,15 @@ export default function CasesPage() {
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setPage(1); // Reset to first page when changing page size
+    setPage(1);
+  };
+
+  const handleFiltersChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    // Reset to first page when filters change (source/match are server-side)
+    if (newFilters.source !== filters.source || newFilters.matchResult !== filters.matchResult) {
+      setPage(1);
+    }
   };
 
   return (
@@ -91,6 +105,8 @@ export default function CasesPage() {
       {(cases.length > 0 || (!isLoading && !error)) && (
         <CaseTableView
           cases={cases}
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
           pagination={{
             page,
             pageSize,

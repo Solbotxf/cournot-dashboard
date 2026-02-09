@@ -14,6 +14,8 @@ export interface ApiEvent {
   result_price: string;
   ai_prompt: string; // JSON string
   ai_result: string; // JSON string or empty
+  source: string;
+  match_result: string;
 }
 
 export interface ApiEventsData {
@@ -122,7 +124,7 @@ export function transformEventToCase(event: ApiEvent): MarketCase {
   return {
     market_id: String(event.event_id),
     source: {
-      platform: "polymarket",
+      platform: event.source || "unknown",
       event_url: `https://polymarket.com/event/${event.slug}`,
       title: event.title,
       question: event.description,
@@ -144,9 +146,16 @@ export function transformEventToCase(event: ApiEvent): MarketCase {
 /** Fetch events from the API */
 export async function fetchEvents(
   pageNum: number = 1,
-  pageSize: number = 20
+  pageSize: number = 20,
+  filters?: { source?: string; match_result?: string }
 ): Promise<{ cases: MarketCase[]; total: number; pageNum: number; pageSize: number }> {
-  const url = `${API_BASE}/events?page_num=${pageNum}&page_size=${pageSize}`;
+  const params = new URLSearchParams({
+    page_num: String(pageNum),
+    page_size: String(pageSize),
+  });
+  if (filters?.source) params.set("source", filters.source);
+  if (filters?.match_result) params.set("match_result", filters.match_result);
+  const url = `${API_BASE}/events?${params.toString()}`;
 
   const res = await fetch(url, {
     cache: "no-store",

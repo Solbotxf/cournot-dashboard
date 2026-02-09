@@ -191,11 +191,6 @@ export default function PlaygroundPage() {
 
   // Input state
   const [userInput, setUserInput] = useState("");
-  const [predictionType, setPredictionType] = useState("binary");
-  const [multiSelectChoices, setMultiSelectChoices] = useState<string[]>(["", ""]);
-  const [resolutionDeadline, setResolutionDeadline] = useState("");
-  const [dataSources, setDataSources] = useState<string[]>([]);
-  const [strictMode, setStrictMode] = useState(false);
 
   // Collector selection (for multi-step mode)
   const [availableCollectors, setAvailableCollectors] = useState<CollectorInfo[]>([]);
@@ -253,11 +248,6 @@ export default function PlaygroundPage() {
   function handleReset() {
     setPhase("input");
     setUserInput("");
-    setPredictionType("binary");
-    setMultiSelectChoices(["", ""]);
-    setResolutionDeadline("");
-    setDataSources([]);
-    setStrictMode(false);
     setSelectedCollectors(availableCollectors.length > 0 ? [availableCollectors[0].id] : []);
     setSelectedProvider(null);
     setSelectedModel("");
@@ -307,7 +297,6 @@ export default function PlaygroundPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_input: userInput,
-          strict_mode: strictMode,
           ...(selectedProvider && { llm_provider: selectedProvider }),
           ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
         }),
@@ -552,16 +541,6 @@ export default function PlaygroundPage() {
           <PlaygroundInput
             userInput={userInput}
             onUserInputChange={setUserInput}
-            predictionType={predictionType}
-            onPredictionTypeChange={setPredictionType}
-            multiSelectChoices={multiSelectChoices}
-            onMultiSelectChoicesChange={setMultiSelectChoices}
-            resolutionDeadline={resolutionDeadline}
-            onResolutionDeadlineChange={setResolutionDeadline}
-            dataSources={dataSources}
-            onDataSourcesChange={setDataSources}
-            strictMode={strictMode}
-            onStrictModeChange={setStrictMode}
             onPrompt={handlePrompt}
             onResolve={handleResolve}
             canResolve={

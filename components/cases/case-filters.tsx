@@ -2,17 +2,19 @@
 
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
-import type { SourceStatus, MatchStatus } from "@/lib/types";
+
+export type SourceFilter = "ALL" | "polymarket" | "myriad";
+export type MatchResultFilter = "ALL" | "match" | "invalid";
 
 export interface FilterState {
-  sourceStatus: SourceStatus | "ALL";
-  matchStatus: MatchStatus | "ALL";
+  source: SourceFilter;
+  matchResult: MatchResultFilter;
   needsAttention: boolean;
 }
 
 export const defaultFilters: FilterState = {
-  sourceStatus: "ALL",
-  matchStatus: "ALL",
+  source: "ALL",
+  matchResult: "ALL",
   needsAttention: false,
 };
 
@@ -62,15 +64,13 @@ export function CaseFilters({
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card/50 px-4 py-3">
       <ChipGroup
-        label="Status"
-        value={filters.sourceStatus}
-        onChange={(v) => onChange({ ...filters, sourceStatus: v })}
+        label="Source"
+        value={filters.source}
+        onChange={(v) => onChange({ ...filters, source: v })}
         options={[
           { value: "ALL", label: "All" },
-          { value: "OPEN", label: "Open" },
-          { value: "CLOSED", label: "Closed" },
-          { value: "RESOLVED", label: "Resolved" },
-          { value: "DISPUTED", label: "Disputed" },
+          { value: "polymarket", label: "Polymarket" },
+          { value: "myriad", label: "Myriad" },
         ]}
       />
 
@@ -78,14 +78,12 @@ export function CaseFilters({
 
       <ChipGroup
         label="Match"
-        value={filters.matchStatus}
-        onChange={(v) => onChange({ ...filters, matchStatus: v })}
+        value={filters.matchResult}
+        onChange={(v) => onChange({ ...filters, matchResult: v })}
         options={[
           { value: "ALL", label: "All" },
-          { value: "MATCH", label: "Match" },
-          { value: "MISMATCH", label: "Mismatch" },
-          { value: "PENDING", label: "Pending" },
-          { value: "VERIFICATION_FAILED", label: "Verify Failed" },
+          { value: "match", label: "Match" },
+          { value: "invalid", label: "Invalid" },
         ]}
       />
 

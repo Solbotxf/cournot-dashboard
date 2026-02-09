@@ -207,7 +207,7 @@ export function PillarTrust({ c }: { c: MarketCase }) {
                   </div>
 
                   {/* Issues */}
-                  {oracle.llm_review.issues.length > 0 && (
+                  {oracle.llm_review.issues?.length > 0 && (
                     <div className="space-y-1">
                       <p className="text-[10px] text-muted-foreground">Issues found:</p>
                       {oracle.llm_review.issues.map((issue, i) => (

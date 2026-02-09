@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -20,8 +20,7 @@ import {
 } from "@/components/shared/status-badge";
 import { ConfidenceBar } from "@/components/shared/confidence-bar";
 import { InlineCopyButton } from "@/components/shared/copy-field";
-import { CaseFilters, defaultFilters, type FilterState } from "./case-filters";
-import { KpiCards } from "./kpi-cards";
+import { CaseFilters, type FilterState } from "./case-filters";
 import type { MarketCase, MatchStatus } from "@/lib/types";
 import { getMatchStatus } from "@/lib/types";
 import {
@@ -367,6 +366,8 @@ function sortCases(cases: MarketCase[], sortKey: SortKey): MarketCase[] {
 
 interface CaseTableViewProps {
   cases: MarketCase[];
+  filters: FilterState;
+  onFiltersChange: (f: FilterState) => void;
   // Pagination props (optional - if not provided, no pagination UI shown)
   pagination?: {
     page: number;
@@ -378,33 +379,14 @@ interface CaseTableViewProps {
   };
 }
 
-export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
-  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+export function CaseTableView({ cases, filters, onFiltersChange, pagination }: CaseTableViewProps) {
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [sortKey, setSortKey] = useState<SortKey>("updated");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const router = useRouter();
 
-  // KPI card click → apply match filter
-  const handleKpiClick = useCallback(
-    (filterKey: string) => {
-      setFilters((prev) => ({
-        ...prev,
-        matchStatus: filterKey as MatchStatus,
-        needsAttention: false,
-      }));
-    },
-    []
-  );
-
-  // Apply filters
+  // Client-side filters (needsAttention only — source & match are server-side)
   let filtered = cases;
-  if (filters.sourceStatus !== "ALL") {
-    filtered = filtered.filter((c) => c.source.status === filters.sourceStatus);
-  }
-  if (filters.matchStatus !== "ALL") {
-    filtered = filtered.filter((c) => getMatchStatus(c) === filters.matchStatus);
-  }
   if (filters.needsAttention) {
     filtered = filtered.filter(needsAttention);
   }
@@ -415,8 +397,7 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
 
   return (
     <div className="space-y-4">
-      <KpiCards cases={cases} onFilterClick={handleKpiClick} />
-      <CaseFilters filters={filters} onChange={setFilters} />
+      <CaseFilters filters={filters} onChange={onFiltersChange} />
 
       {/* Toolbar */}
       <div className="flex items-center justify-between">
