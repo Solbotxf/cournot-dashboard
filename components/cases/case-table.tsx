@@ -332,17 +332,11 @@ function CaseCard({ c, onClick }: { c: MarketCase; onClick: () => void }) {
 
 // ─── Sort ───────────────────────────────────────────────────────────────────
 
-type SortKey = "deadline" | "confidence" | "updated" | "mismatch";
+type SortKey = "confidence" | "updated" | "mismatch";
 
 function sortCases(cases: MarketCase[], sortKey: SortKey): MarketCase[] {
   const sorted = [...cases];
   switch (sortKey) {
-    case "deadline":
-      return sorted.sort(
-        (a, b) =>
-          new Date(a.source.resolution_deadline).getTime() -
-          new Date(b.source.resolution_deadline).getTime()
-      );
     case "confidence":
       return sorted.sort(
         (a, b) =>
@@ -436,7 +430,6 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
             className="h-7 rounded-md border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="updated">Last Updated</option>
-            <option value="deadline">Deadline (Soonest)</option>
             <option value="confidence">Confidence (High→Low)</option>
             <option value="mismatch">Attention First</option>
           </select>
@@ -497,7 +490,6 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
                   <TableHead>
                     <span className="whitespace-nowrap">AI Readiness</span>
                   </TableHead>
-                  <TableHead>Deadline</TableHead>
                   <TableHead className="w-8"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -590,11 +582,6 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
                         {/* AI Readiness */}
                         <TableCell>
                           <AiReadinessCell c={c} />
-                        </TableCell>
-
-                        {/* Deadline */}
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDate(c.source.resolution_deadline)}
                         </TableCell>
 
                         {/* Expand chevron */}

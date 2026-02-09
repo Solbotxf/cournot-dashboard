@@ -6,10 +6,6 @@ import {
   LayoutDashboard,
   FileText,
   FlaskConical,
-  Play,
-  Globe,
-  AlertTriangle,
-  Settings,
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,18 +19,6 @@ const navGroups = [
       { href: "/cases", label: "Cases", icon: FileText },
       { href: "/playground", label: "Playground", icon: FlaskConical },
     ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { href: "/runs", label: "Runs", icon: Play },
-      { href: "/sources", label: "Sources", icon: Globe },
-      { href: "/disputes", label: "Disputes", icon: AlertTriangle },
-    ],
-  },
-  {
-    label: "System",
-    items: [{ href: "/settings", label: "Settings", icon: Settings }],
   },
 ];
 
