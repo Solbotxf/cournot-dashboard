@@ -26,7 +26,7 @@ interface CollectorInfo {
 
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
-const API_BASE = process.env.PLAYGROUND_PUBLIC_PROTOCOL_API_BASE ?? "http://localhost:8000";
+const API_BASE = process.env.PLAYGROUND_PUBLIC_PROTOCOL_API_BASE ?? "https://protocol.cournot.ai";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -263,7 +263,6 @@ export default function PlaygroundPage() {
     setSelectedModel("");
     setPromptResult(null);
     setResolveResult(null);
-    setExecutionLogs([]);
     setPipelineSteps(createInitialSteps());
   }
 
@@ -282,7 +281,6 @@ export default function PlaygroundPage() {
     setPhase("prompting");
     setPromptResult(null);
     setResolveResult(null);
-    setExecutionLogs([]);
     setPipelineSteps(createInitialSteps());
 
     // Update step to running
@@ -346,9 +344,6 @@ export default function PlaygroundPage() {
       if (!collectRes.ok) throw new Error(`Collect failed: ${await collectRes.text()}`);
       const collectData = await collectRes.json();
       const evidenceBundles = collectData.evidence_bundles; // Now an array
-      if (Array.isArray(collectData.execution_logs)) {
-        setExecutionLogs(collectData.execution_logs);
-      }
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "completed"));
 
       // Step 3: Audit (pass array of bundles)
@@ -587,7 +582,6 @@ export default function PlaygroundPage() {
           promptResult={promptResult}
           resolveResult={resolveResult}
           userInput={userInput}
-          executionLogs={executionLogs}
         />
       )}
     </div>
