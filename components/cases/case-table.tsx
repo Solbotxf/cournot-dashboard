@@ -33,7 +33,6 @@ import {
   List,
   CheckCircle2,
   XCircle,
-  Zap,
   Shield,
   Loader2,
 } from "lucide-react";
@@ -47,18 +46,6 @@ function formatDate(iso: string) {
     day: "numeric",
     year: "2-digit",
   });
-}
-
-function formatLatency(c: MarketCase): string | null {
-  if (!c.oracle_result || !c.source.official_resolved_at) return null;
-  const delta =
-    new Date(c.oracle_result.executed_at).getTime() -
-    new Date(c.source.official_resolved_at).getTime();
-  const absDelta = Math.abs(delta);
-  const sign = delta < 0 ? "-" : "+";
-  if (absDelta < 60_000) return `${sign}${(absDelta / 1000).toFixed(0)}s`;
-  if (absDelta < 3_600_000) return `${sign}${(absDelta / 60_000).toFixed(0)}m`;
-  return `${sign}${(absDelta / 3_600_000).toFixed(1)}h`;
 }
 
 function severityColor(match: MatchStatus): string {
@@ -87,7 +74,34 @@ function needsAttention(c: MarketCase): boolean {
 // ─── AI Readiness (pending cases) ───────────────────────────────────────────
 
 function AiReadinessCell({ c }: { c: MarketCase }) {
-  if (c.oracle_result) return null; // only for pending
+  // Resolved: show audit & verify status
+  if (c.oracle_result) {
+    const audited = c.oracle_result.llm_review != null;
+    const verified = c.oracle_result.verification_ok;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-0.5 text-[10px]">
+          {audited ? (
+            <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+          ) : (
+            <XCircle className="h-3 w-3 text-muted-foreground/50" />
+          )}
+          <span className="text-muted-foreground">Audit</span>
+        </span>
+        <span className="inline-flex items-center gap-0.5 text-[10px]">
+          {verified ? (
+            <Shield className="h-3 w-3 text-emerald-400" />
+          ) : (
+            <Shield className="h-3 w-3 text-red-400" />
+          )}
+          <span className="text-muted-foreground">Verify</span>
+        </span>
+      </div>
+    );
+  }
+
+  // Pending: show spec, plan, ambiguity
   const parseOk = c.parse_result.ok;
   const planOk = c.parse_result.tool_plan !== null;
   const specOk = c.parse_result.prompt_spec !== null;
@@ -267,8 +281,6 @@ function AiPreviewPanel({ c }: { c: MarketCase }) {
 
 function CaseCard({ c, onClick }: { c: MarketCase; onClick: () => void }) {
   const matchStatus = getMatchStatus(c);
-  const isPending = !c.oracle_result;
-  const latency = formatLatency(c);
 
   return (
     <Card
@@ -312,13 +324,7 @@ function CaseCard({ c, onClick }: { c: MarketCase; onClick: () => void }) {
             <ConfidenceBar confidence={c.oracle_result.confidence} />
           )}
         </div>
-        {isPending && <AiReadinessCell c={c} />}
-        {!isPending && latency && (
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Zap className="h-3 w-3" />
-            <span>Latency: {latency}</span>
-          </div>
-        )}
+        <AiReadinessCell c={c} />
       </CardContent>
     </Card>
   );
@@ -326,7 +332,7 @@ function CaseCard({ c, onClick }: { c: MarketCase; onClick: () => void }) {
 
 // ─── Sort ───────────────────────────────────────────────────────────────────
 
-type SortKey = "deadline" | "confidence" | "updated" | "mismatch" | "latency";
+type SortKey = "deadline" | "confidence" | "updated" | "mismatch";
 
 function sortCases(cases: MarketCase[], sortKey: SortKey): MarketCase[] {
   const sorted = [...cases];
@@ -357,12 +363,6 @@ function sortCases(cases: MarketCase[], sortKey: SortKey): MarketCase[] {
           MATCH: 3,
         };
         return (order[getMatchStatus(a)] ?? 9) - (order[getMatchStatus(b)] ?? 9);
-      });
-    case "latency":
-      return sorted.sort((a, b) => {
-        const la = a.oracle_result?.duration_ms ?? Infinity;
-        const lb = b.oracle_result?.duration_ms ?? Infinity;
-        return la - lb;
       });
     default:
       return sorted;
@@ -439,7 +439,6 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
             <option value="deadline">Deadline (Soonest)</option>
             <option value="confidence">Confidence (High→Low)</option>
             <option value="mismatch">Attention First</option>
-            <option value="latency">Fastest Resolution</option>
           </select>
 
           <div className="flex rounded-md border border-border overflow-hidden">
@@ -496,7 +495,7 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
                   <TableHead>Match</TableHead>
                   <TableHead>Confidence</TableHead>
                   <TableHead>
-                    <span className="whitespace-nowrap">AI Readiness / Latency</span>
+                    <span className="whitespace-nowrap">AI Readiness</span>
                   </TableHead>
                   <TableHead>Deadline</TableHead>
                   <TableHead className="w-8"></TableHead>
@@ -506,8 +505,6 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
                 {filtered.map((c) => {
                   const matchStatus = getMatchStatus(c);
                   const isExpanded = expandedId === c.market_id;
-                  const isPending = !c.oracle_result;
-                  const latency = formatLatency(c);
 
                   return (
                     <>
@@ -590,20 +587,9 @@ export function CaseTableView({ cases, pagination }: CaseTableViewProps) {
                           )}
                         </TableCell>
 
-                        {/* AI Readiness (pending) / Resolve Latency (resolved) */}
+                        {/* AI Readiness */}
                         <TableCell>
-                          {isPending ? (
-                            <AiReadinessCell c={c} />
-                          ) : latency ? (
-                            <div className="flex items-center gap-1 text-xs">
-                              <Zap className="h-3 w-3 text-sky-400" />
-                              <span className="font-mono tabular-nums text-foreground/80">
-                                {latency}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                          <AiReadinessCell c={c} />
                         </TableCell>
 
                         {/* Deadline */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const UPSTREAM = "https://dev-interface.cournot.ai/play/polymarket";
+const UPSTREAM = process.env.UPSTREAM_API_BASE ?? "https://dev-interface.cournot.ai/play/polymarket";
 
 export async function GET(
   request: NextRequest,

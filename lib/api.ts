@@ -104,7 +104,7 @@ export function transformEventToCase(event: ApiEvent): MarketCase {
           evidence_bundles: parsed.evidence_bundles,
           reasoning_steps: parsed.reasoning_steps,
           confidence_breakdown: parsed.confidence_breakdown,
-          llm_review: parsed.llm_review,
+          llm_review: parsed.llm_review ?? parsed.artifacts?.verdict?.metadata?.llm_review,
           execution_steps: parsed.execution_steps,
           discovered_sources: parsed.discovered_sources,
         };
