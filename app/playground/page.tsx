@@ -269,12 +269,25 @@ export default function PlaygroundPage() {
 
   function toggleCollector(collectorId: string) {
     setSelectedCollectors((prev) => {
+      let next: string[];
       if (prev.includes(collectorId)) {
         // Don't allow deselecting all collectors
         if (prev.length === 1) return prev;
-        return prev.filter((c) => c !== collectorId);
+        next = prev.filter((c) => c !== collectorId);
+      } else {
+        next = [...prev, collectorId];
       }
-      return [...prev, collectorId];
+
+      // Auto-set provider to google when GeminiGrounded is selected
+      if (next.some((c) => c.toLowerCase().includes("geminigrounded"))) {
+        const googleProvider = providers.find((p) => p.provider.toLowerCase() === "google");
+        if (googleProvider) {
+          setSelectedProvider(googleProvider.provider);
+          setSelectedModel(googleProvider.default_model);
+        }
+      }
+
+      return next;
     });
   }
 
@@ -345,10 +358,15 @@ export default function PlaygroundPage() {
       });
       if (!collectRes.ok) throw new Error(`Collect failed: ${await collectRes.text()}`);
       const collectData = await collectRes.json();
-      const evidenceBundles = collectData.evidence_bundles; // Now an array
       if (Array.isArray(collectData.execution_logs)) {
         setExecutionLogs(collectData.execution_logs);
       }
+      if (collectData.ok === false || (Array.isArray(collectData.errors) && collectData.errors.length > 0)) {
+        const errMsg = collectData.errors?.join("; ") || "Collect returned errors";
+        setPipelineSteps((prev) => updateStepStatus(prev, "collect", "error"));
+        throw new Error(errMsg);
+      }
+      const evidenceBundles = collectData.evidence_bundles; // Now an array
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "completed"));
 
       // Step 3: Audit (pass array of bundles)
@@ -365,6 +383,11 @@ export default function PlaygroundPage() {
       });
       if (!auditRes.ok) throw new Error(`Audit failed: ${await auditRes.text()}`);
       const auditData = await auditRes.json();
+      if (auditData.ok === false || (Array.isArray(auditData.errors) && auditData.errors.length > 0)) {
+        const errMsg = auditData.errors?.join("; ") || "Audit returned errors";
+        setPipelineSteps((prev) => updateStepStatus(prev, "audit", "error"));
+        throw new Error(errMsg);
+      }
       const reasoningTrace = auditData.reasoning_trace;
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "completed"));
 
@@ -383,6 +406,11 @@ export default function PlaygroundPage() {
       });
       if (!judgeRes.ok) throw new Error(`Judge failed: ${await judgeRes.text()}`);
       const judgeData = await judgeRes.json();
+      if (judgeData.ok === false || (Array.isArray(judgeData.errors) && judgeData.errors.length > 0)) {
+        const errMsg = judgeData.errors?.join("; ") || "Judge returned errors";
+        setPipelineSteps((prev) => updateStepStatus(prev, "judge", "error"));
+        throw new Error(errMsg);
+      }
       const verdict = judgeData.verdict;
       const outcome = judgeData.outcome;
       const confidence = judgeData.confidence;
@@ -402,6 +430,11 @@ export default function PlaygroundPage() {
       });
       if (!bundleRes.ok) throw new Error(`Bundle failed: ${await bundleRes.text()}`);
       const bundleData = await bundleRes.json();
+      if (bundleData.ok === false || (Array.isArray(bundleData.errors) && bundleData.errors.length > 0)) {
+        const errMsg = bundleData.errors?.join("; ") || "Bundle returned errors";
+        setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "error"));
+        throw new Error(errMsg);
+      }
       const porBundle = bundleData.por_bundle;
       const porRoot = bundleData.por_root;
       setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "completed"));

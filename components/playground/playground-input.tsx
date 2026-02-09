@@ -381,7 +381,9 @@ export function PlaygroundInput({
           )}
 
           {/* LLM Provider/Model Selection (appears when prompt is done) */}
-          {canResolve && providers.length > 0 && onProviderChange && onModelChange && (
+          {canResolve && providers.length > 0 && onProviderChange && onModelChange && (() => {
+            const geminiLocked = selectedCollectors.some((c) => c.toLowerCase().includes("geminigrounded"));
+            return (
             <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Cpu className="h-3.5 w-3.5 text-violet-400" />
@@ -390,6 +392,14 @@ export function PlaygroundInput({
                   {selectedProvider ?? "server default"}
                 </span>
               </div>
+              {geminiLocked && (
+                <div className="flex items-start gap-2 rounded-md bg-blue-500/10 border border-blue-500/20 px-2.5 py-1.5">
+                  <span className="text-blue-400 text-sm leading-none mt-0.5">&#9432;</span>
+                  <span className="text-[11px] text-blue-300/90">
+                    GeminiGrounded requires the Google provider. Provider is locked to Google.
+                  </span>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <select
                   value={selectedProvider ?? ""}
@@ -403,11 +413,11 @@ export function PlaygroundInput({
                       onModelChange("");
                     }
                   }}
-                  disabled={isLoading}
+                  disabled={isLoading || geminiLocked}
                   className={cn(
                     "rounded-md border bg-muted/20 px-2.5 py-1 text-xs transition-colors",
                     "border-violet-500/30 focus:border-violet-500/50 focus:outline-none",
-                    isLoading && "opacity-50 cursor-not-allowed"
+                    (isLoading || geminiLocked) && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <option value="">Server Default</option>
@@ -433,7 +443,8 @@ export function PlaygroundInput({
                 )}
               </div>
             </div>
-          )}
+          );
+          })()}
 
           {/* Buttons */}
           <div className="flex gap-2">

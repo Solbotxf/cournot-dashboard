@@ -20,6 +20,9 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Oracle — Prediction Market Resolution",
   description: "AI Oracle dashboard for prediction market resolution and audit",
+  icons: {
+    icon: "/cournot_icon.png",
+  },
 };
 
 export default function RootLayout({
