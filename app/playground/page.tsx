@@ -268,8 +268,11 @@ export default function PlaygroundPage() {
         next = [...prev, collectorId];
       }
 
-      // Auto-set provider to google when GeminiGrounded is selected
-      if (next.some((c) => c.toLowerCase().includes("geminigrounded"))) {
+      const hasGemini = next.some((c) => c.toLowerCase().includes("geminigrounded"));
+      const onlyGemini = hasGemini && next.length === 1;
+
+      if (onlyGemini) {
+        // Lock provider to Google when GeminiGrounded is the only collector
         const googleProvider = providers.find((p) => p.provider.toLowerCase() === "google");
         if (googleProvider) {
           setSelectedProvider(googleProvider.provider);
