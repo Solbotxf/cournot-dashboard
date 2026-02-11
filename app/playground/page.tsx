@@ -14,6 +14,15 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Lock } from "lucide-react";
+import {
+  trackPlaygroundCodeEntered,
+  trackPlaygroundPrompt,
+  trackPlaygroundResolve,
+  trackPlaygroundProviderChange,
+  trackPlaygroundCollectorToggle,
+  trackPlaygroundReset,
+  trackPlaygroundStepComplete,
+} from "@/lib/analytics";
 
 // ─── Code-gated API helper ──────────────────────────────────────────────────
 
@@ -265,6 +274,7 @@ export default function PlaygroundPage() {
     localStorage.setItem(STORAGE_KEY, code);
     setAccessCode(code);
     setCodeInput("");
+    trackPlaygroundCodeEntered(code);
   }
 
   function handleChangeCode() {
@@ -348,9 +358,12 @@ export default function PlaygroundPage() {
     setResolveResult(null);
     setExecutionLogs([]);
     setPipelineSteps(createInitialSteps());
+    if (accessCode) trackPlaygroundReset(accessCode);
   }
 
   function toggleCollector(collectorId: string) {
+    const willSelect = !selectedCollectors.includes(collectorId);
+    if (accessCode) trackPlaygroundCollectorToggle(accessCode, collectorId, willSelect);
     setSelectedCollectors((prev) => {
       let next: string[];
       if (prev.includes(collectorId)) {
@@ -377,6 +390,7 @@ export default function PlaygroundPage() {
 
   async function handlePrompt() {
     if (!accessCode) return;
+    trackPlaygroundPrompt(accessCode, userInput.length);
     setPhase("prompting");
     setPromptResult(null);
     setResolveResult(null);
@@ -392,8 +406,10 @@ export default function PlaygroundPage() {
       });
       setPromptResult(data);
       setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "completed"));
+      trackPlaygroundStepComplete(accessCode, "prompt", true);
       setPhase("prompted");
     } catch (err) {
+      trackPlaygroundStepComplete(accessCode, "prompt", false);
       if (err instanceof InvalidCodeError) {
         handleInvalidCode();
         setPhase("input");
@@ -438,6 +454,7 @@ export default function PlaygroundPage() {
       }
       const evidenceBundles = collectData.evidence_bundles;
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "completed"));
+      trackPlaygroundStepComplete(accessCode, "collect", true);
 
       // Step 3: Audit
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "running"));
@@ -454,6 +471,7 @@ export default function PlaygroundPage() {
       }
       const reasoningTrace = auditData.reasoning_trace;
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "completed"));
+      trackPlaygroundStepComplete(accessCode, "audit", true);
 
       // Step 4: Judge
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "running"));
@@ -473,6 +491,7 @@ export default function PlaygroundPage() {
       const outcome = judgeData.outcome;
       const confidence = judgeData.confidence;
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "completed"));
+      trackPlaygroundStepComplete(accessCode, "judge", true);
 
       // Step 5: Bundle
       setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "running"));
@@ -490,6 +509,7 @@ export default function PlaygroundPage() {
       const porBundle = bundleData.por_bundle;
       const porRoot = bundleData.por_root;
       setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "completed"));
+      trackPlaygroundStepComplete(accessCode, "bundle", true);
 
       // Build final result
       const summary = buildRunSummary(
@@ -550,6 +570,13 @@ export default function PlaygroundPage() {
   }
 
   function handleResolve() {
+    if (accessCode) {
+      trackPlaygroundResolve(
+        accessCode,
+        useMultiStep ? "multi_step" : "single_call",
+        selectedCollectors
+      );
+    }
     if (useMultiStep) {
       handleResolveMultiStep();
     } else {
@@ -674,7 +701,10 @@ export default function PlaygroundPage() {
             providers={providers}
             selectedProvider={selectedProvider}
             selectedModel={selectedModel}
-            onProviderChange={setSelectedProvider}
+            onProviderChange={(p) => {
+              setSelectedProvider(p);
+              if (accessCode) trackPlaygroundProviderChange(accessCode, p, selectedModel);
+            }}
             onModelChange={setSelectedModel}
           />
         </div>

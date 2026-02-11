@@ -6,6 +6,7 @@ import { defaultFilters, type FilterState } from "@/components/cases/case-filter
 import { fetchEvents } from "@/lib/api";
 import type { MarketCase } from "@/lib/types";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { trackCasesPageView, trackCasesFilterChange } from "@/lib/analytics";
 
 export default function CasesPage() {
   const [cases, setCases] = useState<MarketCase[]>([]);
@@ -27,6 +28,7 @@ export default function CasesPage() {
       const result = await fetchEvents(page, pageSize, apiFilters);
       setCases(result.cases);
       setTotal(result.total);
+      trackCasesPageView(page, pageSize, filters.source, filters.matchResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load events");
     } finally {
@@ -48,6 +50,15 @@ export default function CasesPage() {
   };
 
   const handleFiltersChange = (newFilters: FilterState) => {
+    if (newFilters.source !== filters.source) {
+      trackCasesFilterChange("source", newFilters.source);
+    }
+    if (newFilters.matchResult !== filters.matchResult) {
+      trackCasesFilterChange("match_result", newFilters.matchResult);
+    }
+    if (newFilters.needsAttention !== filters.needsAttention) {
+      trackCasesFilterChange("needs_attention", String(newFilters.needsAttention));
+    }
     setFilters(newFilters);
     // Reset to first page when filters change (source/match are server-side)
     if (newFilters.source !== filters.source || newFilters.matchResult !== filters.matchResult) {

@@ -23,6 +23,7 @@ import { ReasoningTraceCard } from "@/components/detail/reasoning-trace";
 import { TimelineSection } from "@/components/detail/timeline";
 import { EvidenceSection } from "@/components/detail/evidence-section";
 import { fetchEventById } from "@/lib/api";
+import { trackCaseDetailView } from "@/lib/analytics";
 import type { MarketCase } from "@/lib/types";
 
 interface CaseDetailClientProps {
@@ -46,6 +47,7 @@ export function CaseDetailClient({ eventId }: CaseDetailClientProps) {
           setError("Event not found");
         } else {
           setCase(result);
+          trackCaseDetailView(eventId);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load event");

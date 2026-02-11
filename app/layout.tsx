@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
 import "./globals.css";
 import { Topbar } from "@/components/layout/topbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { RouteTracker } from "@/components/layout/route-tracker";
 import { Toaster } from "sonner";
+import { GA_ID } from "@/lib/analytics";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,8 +35,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_ID}');
+          `}
+        </Script>
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-[family-name:var(--font-geist-sans)] antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <RouteTracker />
           <Topbar />
           <div className="flex">
             <Sidebar />
