@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { ParseResult, RunSummary, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource, ExecutionLog } from "@/lib/types";
 import { PlaygroundInput } from "@/components/playground/playground-input";
@@ -11,7 +11,67 @@ import {
   createInitialSteps,
   updateStepStatus,
 } from "@/components/playground/pipeline-progress";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Lock } from "lucide-react";
+
+// ─── Code-gated API helper ──────────────────────────────────────────────────
+
+const STORAGE_KEY = "playground_code";
+
+class InvalidCodeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidCodeError";
+  }
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/**
+ * All playground API calls go through /api/proxy/ai_data with a code.
+ * The upstream wraps responses as: { code: 0, msg: "Success", data: { result: "<JSON string>" } }
+ */
+async function callApi(code: string, path: string, body: Record<string, any> = {}, method: "GET" | "POST" = "POST"): Promise<any> {
+  const res = await fetch("/api/proxy/ai_data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code,
+      post_data: JSON.stringify(body),
+      path,
+      method,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+
+  if (json.code === 4100) {
+    throw new InvalidCodeError(json.msg || "Invalid access code");
+  }
+
+  if (json.code !== 0) {
+    throw new Error(json.msg || "API error");
+  }
+
+  const resultStr = json.data?.result;
+  if (typeof resultStr === "string") {
+    try {
+      return JSON.parse(resultStr);
+    } catch {
+      return resultStr;
+    }
+  }
+
+  return json.data;
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface ProviderInfo {
   provider: string;
@@ -26,9 +86,7 @@ interface CollectorInfo {
 
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
-const API_BASE = process.env.PLAYGROUND_PUBLIC_PROTOCOL_API_BASE ?? "https://protocol.cournot.ai";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// ─── Evidence / RunSummary mapping helpers ──────────────────────────────────
 
 /** Map evidence bundle items to EvidenceItem[] */
 function mapEvidenceItems(bundle: any): EvidenceItem[] {
@@ -110,13 +168,9 @@ function buildRunSummary(
     dry_run: "dry_run",
   };
 
-  // Flatten all evidence items from all bundles for backward compatibility
   const allEvidenceItems = evidenceBundles.flatMap(bundle => mapEvidenceItems(bundle));
-
-  // Map to typed evidence bundles
   const typedBundles = mapEvidenceBundles(evidenceBundles);
 
-  // Collect discovered sources from all bundles
   const discoveredSources: DiscoveredSource[] = evidenceBundles.flatMap(
     (bundle: any) =>
       (bundle?.items ?? []).flatMap((item: any) =>
@@ -128,7 +182,6 @@ function buildRunSummary(
       )
   );
 
-  // Total execution time from all bundles
   const totalDurationMs = evidenceBundles.reduce(
     (sum, bundle) => sum + (bundle?.execution_time_ms ?? 0),
     0
@@ -170,7 +223,6 @@ function buildRunSummary(
 /** Map the backend /step/resolve response to the RunSummary shape (for single-call mode) */
 function toRunSummary(raw: any): RunSummary {
   const artifacts = raw.artifacts ?? {};
-  // Support both new evidence_bundles array and legacy evidence_bundle
   const evidenceBundles = artifacts.evidence_bundles ??
     (artifacts.evidence_bundle ? [artifacts.evidence_bundle] : []);
 
@@ -185,7 +237,41 @@ function toRunSummary(raw: any): RunSummary {
   );
 }
 
+// ─── Page Component ─────────────────────────────────────────────────────────
+
 export default function PlaygroundPage() {
+  // Access code
+  const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [codeLoaded, setCodeLoaded] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+
+  // Load code from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) setAccessCode(stored);
+    setCodeLoaded(true);
+  }, []);
+
+  const handleInvalidCode = useCallback(() => {
+    setAccessCode(null);
+    localStorage.removeItem(STORAGE_KEY);
+    toast.error("Invalid access code", { description: "Please re-enter your code." });
+  }, []);
+
+  function handleCodeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const code = codeInput.trim();
+    if (!code) return;
+    localStorage.setItem(STORAGE_KEY, code);
+    setAccessCode(code);
+    setCodeInput("");
+  }
+
+  function handleChangeCode() {
+    setAccessCode(null);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
   // Phase
   const [phase, setPhase] = useState<Phase>("input");
 
@@ -201,10 +287,11 @@ export default function PlaygroundPage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("");
 
-  // Fetch capabilities on mount
+  // Fetch capabilities via ai_data
   useEffect(() => {
-    fetch(`${API_BASE}/capabilities`)
-      .then((res) => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+    if (!accessCode) return;
+
+    callApi(accessCode, "/capabilities", {}, "GET")
       .then((data) => {
         if (Array.isArray(data.providers)) {
           setProviders(data.providers);
@@ -218,7 +305,6 @@ export default function PlaygroundPage() {
               description: a.description ?? "",
             }));
             setAvailableCollectors(collectors);
-            // Default to first non-fallback collector if available
             const defaultCollector = collectorStep.agents.find((a: any) => !a.is_fallback);
             if (defaultCollector) {
               setSelectedCollectors([defaultCollector.name]);
@@ -229,9 +315,16 @@ export default function PlaygroundPage() {
         }
       })
       .catch((err) => {
-        console.warn("Failed to fetch capabilities:", err);
+        if (err instanceof InvalidCodeError) {
+          handleInvalidCode();
+        } else {
+          console.warn("Failed to fetch capabilities:", err);
+          toast.error("Failed to load capabilities", {
+            description: err instanceof Error ? err.message : "Collector and provider options may not be available.",
+          });
+        }
       });
-  }, []);
+  }, [accessCode, handleInvalidCode]);
 
   // Results
   const [promptResult, setPromptResult] = useState<ParseResult | null>(null);
@@ -240,7 +333,7 @@ export default function PlaygroundPage() {
 
   // Pipeline progress
   const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>(createInitialSteps());
-  const [useMultiStep, setUseMultiStep] = useState(true); // Toggle for multi-step vs single-call
+  const [useMultiStep, setUseMultiStep] = useState(true);
 
   const isLoading = phase === "prompting" || phase === "resolving";
   const hasResults = phase === "prompted" || phase === "resolved";
@@ -261,7 +354,6 @@ export default function PlaygroundPage() {
     setSelectedCollectors((prev) => {
       let next: string[];
       if (prev.includes(collectorId)) {
-        // Don't allow deselecting all collectors
         if (prev.length === 1) return prev;
         next = prev.filter((c) => c !== collectorId);
       } else {
@@ -272,7 +364,6 @@ export default function PlaygroundPage() {
       const onlyGemini = hasGemini && next.length === 1;
 
       if (onlyGemini) {
-        // Lock provider to Google when GeminiGrounded is the only collector
         const googleProvider = providers.find((p) => p.provider.toLowerCase() === "google");
         if (googleProvider) {
           setSelectedProvider(googleProvider.provider);
@@ -285,36 +376,29 @@ export default function PlaygroundPage() {
   }
 
   async function handlePrompt() {
+    if (!accessCode) return;
     setPhase("prompting");
     setPromptResult(null);
     setResolveResult(null);
     setExecutionLogs([]);
     setPipelineSteps(createInitialSteps());
-
-    // Update step to running
     setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "running"));
 
     try {
-      const res = await fetch(`${API_BASE}/step/prompt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_input: userInput,
-          ...(selectedProvider && { llm_provider: selectedProvider }),
-          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
-        }),
+      const data: ParseResult = await callApi(accessCode, "/step/prompt", {
+        user_input: userInput,
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-
-      const data: ParseResult = await res.json();
       setPromptResult(data);
       setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "completed"));
       setPhase("prompted");
     } catch (err) {
+      if (err instanceof InvalidCodeError) {
+        handleInvalidCode();
+        setPhase("input");
+        return;
+      }
       setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "error"));
       toast.error("Prompt failed", {
         description: err instanceof Error ? err.message : "Unknown error",
@@ -324,32 +408,26 @@ export default function PlaygroundPage() {
   }
 
   async function handleResolveMultiStep() {
-    if (!promptResult?.prompt_spec || !promptResult?.tool_plan) return;
+    if (!accessCode || !promptResult?.prompt_spec || !promptResult?.tool_plan) return;
 
     setPhase("resolving");
     const steps = createInitialSteps();
-    steps[0].status = "completed"; // Prompt already done
+    steps[0].status = "completed";
     setPipelineSteps(steps);
 
     const promptSpec = promptResult.prompt_spec;
     const toolPlan = promptResult.tool_plan;
 
     try {
-      // Step 2: Collect (with multiple collectors)
+      // Step 2: Collect
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "running"));
-      const collectRes = await fetch(`${API_BASE}/step/collect`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt_spec: promptSpec,
-          tool_plan: toolPlan,
-          collectors: selectedCollectors, // Use array of collectors
-          ...(selectedProvider && { llm_provider: selectedProvider }),
-          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
-        }),
+      const collectData = await callApi(accessCode, "/step/collect", {
+        prompt_spec: promptSpec,
+        tool_plan: toolPlan,
+        collectors: selectedCollectors,
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
-      if (!collectRes.ok) throw new Error(`Collect failed: ${await collectRes.text()}`);
-      const collectData = await collectRes.json();
       if (Array.isArray(collectData.execution_logs)) {
         setExecutionLogs(collectData.execution_logs);
       }
@@ -358,23 +436,17 @@ export default function PlaygroundPage() {
         setPipelineSteps((prev) => updateStepStatus(prev, "collect", "error"));
         throw new Error(errMsg);
       }
-      const evidenceBundles = collectData.evidence_bundles; // Now an array
+      const evidenceBundles = collectData.evidence_bundles;
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "completed"));
 
-      // Step 3: Audit (pass array of bundles)
+      // Step 3: Audit
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "running"));
-      const auditRes = await fetch(`${API_BASE}/step/audit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt_spec: promptSpec,
-          evidence_bundles: evidenceBundles, // Array
-          ...(selectedProvider && { llm_provider: selectedProvider }),
-          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
-        }),
+      const auditData = await callApi(accessCode, "/step/audit", {
+        prompt_spec: promptSpec,
+        evidence_bundles: evidenceBundles,
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
-      if (!auditRes.ok) throw new Error(`Audit failed: ${await auditRes.text()}`);
-      const auditData = await auditRes.json();
       if (auditData.ok === false || (Array.isArray(auditData.errors) && auditData.errors.length > 0)) {
         const errMsg = auditData.errors?.join("; ") || "Audit returned errors";
         setPipelineSteps((prev) => updateStepStatus(prev, "audit", "error"));
@@ -383,21 +455,15 @@ export default function PlaygroundPage() {
       const reasoningTrace = auditData.reasoning_trace;
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "completed"));
 
-      // Step 4: Judge (pass array of bundles)
+      // Step 4: Judge
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "running"));
-      const judgeRes = await fetch(`${API_BASE}/step/judge`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt_spec: promptSpec,
-          evidence_bundles: evidenceBundles, // Array
-          reasoning_trace: reasoningTrace,
-          ...(selectedProvider && { llm_provider: selectedProvider }),
-          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
-        }),
+      const judgeData = await callApi(accessCode, "/step/judge", {
+        prompt_spec: promptSpec,
+        evidence_bundles: evidenceBundles,
+        reasoning_trace: reasoningTrace,
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
-      if (!judgeRes.ok) throw new Error(`Judge failed: ${await judgeRes.text()}`);
-      const judgeData = await judgeRes.json();
       if (judgeData.ok === false || (Array.isArray(judgeData.errors) && judgeData.errors.length > 0)) {
         const errMsg = judgeData.errors?.join("; ") || "Judge returned errors";
         setPipelineSteps((prev) => updateStepStatus(prev, "judge", "error"));
@@ -408,20 +474,14 @@ export default function PlaygroundPage() {
       const confidence = judgeData.confidence;
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "completed"));
 
-      // Step 5: Bundle (pass array of bundles)
+      // Step 5: Bundle
       setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "running"));
-      const bundleRes = await fetch(`${API_BASE}/step/bundle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt_spec: promptSpec,
-          evidence_bundles: evidenceBundles, // Array
-          reasoning_trace: reasoningTrace,
-          verdict: verdict,
-        }),
+      const bundleData = await callApi(accessCode, "/step/bundle", {
+        prompt_spec: promptSpec,
+        evidence_bundles: evidenceBundles,
+        reasoning_trace: reasoningTrace,
+        verdict: verdict,
       });
-      if (!bundleRes.ok) throw new Error(`Bundle failed: ${await bundleRes.text()}`);
-      const bundleData = await bundleRes.json();
       if (bundleData.ok === false || (Array.isArray(bundleData.errors) && bundleData.errors.length > 0)) {
         const errMsg = bundleData.errors?.join("; ") || "Bundle returned errors";
         setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "error"));
@@ -446,6 +506,11 @@ export default function PlaygroundPage() {
       setResolveResult(summary);
       setPhase("resolved");
     } catch (err) {
+      if (err instanceof InvalidCodeError) {
+        handleInvalidCode();
+        setPhase("input");
+        return;
+      }
       toast.error("Resolution failed", {
         description: err instanceof Error ? err.message : "Unknown error",
       });
@@ -454,34 +519,29 @@ export default function PlaygroundPage() {
   }
 
   async function handleResolveSingleCall() {
-    if (!promptResult?.prompt_spec || !promptResult?.tool_plan) return;
+    if (!accessCode || !promptResult?.prompt_spec || !promptResult?.tool_plan) return;
 
     setPhase("resolving");
 
     try {
-      const res = await fetch(`${API_BASE}/step/resolve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt_spec: promptResult.prompt_spec,
-          tool_plan: promptResult.tool_plan,
-          execution_mode: "development",
-          ...(selectedProvider && { llm_provider: selectedProvider }),
-          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
-        }),
+      const data = await callApi(accessCode, "/step/resolve", {
+        prompt_spec: promptResult.prompt_spec,
+        tool_plan: promptResult.tool_plan,
+        execution_mode: "development",
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
       const summary = toRunSummary(data);
       console.log("resolveResult:", JSON.stringify(summary, null, 2));
       setResolveResult(summary);
       setPhase("resolved");
     } catch (err) {
+      if (err instanceof InvalidCodeError) {
+        handleInvalidCode();
+        setPhase("input");
+        return;
+      }
       toast.error("Resolve failed", {
         description: err instanceof Error ? err.message : "Unknown error",
       });
@@ -496,6 +556,52 @@ export default function PlaygroundPage() {
       handleResolveSingleCall();
     }
   }
+
+  // ─── Code gate ──────────────────────────────────────────────────────────────
+
+  if (!codeLoaded) {
+    return null;
+  }
+
+  if (!accessCode) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Card className="w-full max-w-sm border-border/50 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+          <CardContent className="pt-6 pb-6 space-y-4">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10 border border-violet-500/20">
+                <Lock className="h-5 w-5 text-violet-400" />
+              </div>
+              <h2 className="text-lg font-semibold">Access Code Required</h2>
+              <p className="text-sm text-muted-foreground">
+                Enter your access code to use the playground.
+              </p>
+            </div>
+            <form onSubmit={handleCodeSubmit} className="space-y-3">
+              <input
+                type="text"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                placeholder="Enter code"
+                autoFocus
+                className="w-full rounded-lg border border-border bg-muted/20 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              />
+              <button
+                type="submit"
+                disabled={!codeInput.trim()}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Enter Playground
+              </button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─── Main playground UI ───────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
@@ -519,6 +625,13 @@ export default function PlaygroundPage() {
             />
             Multi-step mode
           </label>
+          <button
+            onClick={handleChangeCode}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Lock className="h-3 w-3" />
+            Change Code
+          </button>
           {phase !== "input" && (
             <button
               onClick={handleReset}
