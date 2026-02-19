@@ -1,4 +1,4 @@
-import type { MarketCase, ParseResult, RunSummary, Outcome, SourceStatus } from "./types";
+import type { MarketCase, ParseResult, RunSummary, Outcome, SourceStatus, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource } from "./types";
 
 const API_BASE = "/api/proxy";
 
@@ -39,6 +39,67 @@ function parseOutcome(result: string): Outcome {
 
 function parseSourceStatus(isClosed: boolean): SourceStatus {
   return isClosed ? "RESOLVED" : "OPEN";
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Map a raw evidence item (provenance-nested) to the flat EvidenceItem type */
+function mapRawEvidenceItem(item: any): EvidenceItem {
+  let parsedExcerpt = "";
+  if (item.parsed_value != null) {
+    parsedExcerpt = typeof item.parsed_value === "string"
+      ? item.parsed_value.slice(0, 500)
+      : JSON.stringify(item.parsed_value).slice(0, 500);
+  } else if (item.extracted_fields) {
+    const ef = item.extracted_fields;
+    const parts: string[] = [];
+    if (ef.reason) parts.push(ef.reason);
+    else if (ef.resolution_status) parts.push(`Status: ${ef.resolution_status}`);
+    if (ef.confidence_score != null) parts.push(`Confidence: ${(ef.confidence_score * 100).toFixed(0)}%`);
+    parsedExcerpt = parts.join(" | ");
+  }
+
+  return {
+    evidence_id: item.evidence_id ?? "",
+    source_uri: item.provenance?.source_uri ?? item.source_uri ?? "",
+    source_name: item.provenance?.source_id ?? item.source_name ?? "",
+    tier: item.provenance?.tier ?? item.tier ?? 0,
+    fetched_at: item.provenance?.fetched_at ?? item.fetched_at ?? "",
+    content_hash: item.provenance?.content_hash ?? item.content_hash ?? "",
+    parsed_excerpt: parsedExcerpt,
+    status_code: item.status_code ?? 200,
+    success: item.success,
+    error: item.error,
+    extracted_fields: item.extracted_fields ? {
+      confidence_score: item.extracted_fields.confidence_score,
+      resolution_status: item.extracted_fields.resolution_status,
+      evidence_sources: (item.extracted_fields.evidence_sources ?? []).map((es: any) => ({
+        source_id: es.source_id ?? null,
+        url: es.url ?? "",
+        credibility_tier: typeof es.credibility_tier === "number" ? es.credibility_tier : 3,
+        key_fact: es.key_fact ?? "",
+        supports: es.supports ?? "N/A",
+        date_published: es.date_published ?? null,
+      })),
+      hypothesis_match: item.extracted_fields.hypothesis_match,
+      discrepancies: item.extracted_fields.discrepancies,
+      hypothetical_document: item.extracted_fields.hypothetical_document,
+      conflicts: item.extracted_fields.conflicts,
+      missing_info: item.extracted_fields.missing_info,
+    } : undefined,
+  };
+}
+
+/** Map raw evidence bundles to typed EvidenceBundle[] */
+function mapRawBundles(bundles: any[]): EvidenceBundle[] {
+  return bundles.map((b: any) => ({
+    bundle_id: b.bundle_id ?? "",
+    market_id: b.market_id ?? "",
+    collector_name: b.collector_name ?? "unknown",
+    weight: b.weight ?? 1.0,
+    items: (b.items ?? []).map(mapRawEvidenceItem),
+    execution_time_ms: b.execution_time_ms,
+  }));
 }
 
 /** Transform API event to MarketCase */
@@ -84,31 +145,71 @@ export function transformEventToCase(event: ApiEvent): MarketCase {
     try {
       const parsed = JSON.parse(event.ai_result);
       if (parsed.ok !== undefined) {
+        const artifacts = parsed.artifacts ?? {};
+        const verdict = artifacts.verdict ?? {};
+        const verdictMeta = verdict.metadata ?? {};
+        const reasoningTrace = artifacts.reasoning_trace ?? {};
+        const porBundle = artifacts.por_bundle ?? {};
+        const porMeta = porBundle.metadata ?? {};
+
+        // Evidence bundles: top-level or inside artifacts
+        const rawBundles: any[] = parsed.evidence_bundles ?? artifacts.evidence_bundles ?? [];
+        const typedBundles = rawBundles.length > 0 ? mapRawBundles(rawBundles) : undefined;
+        const allItems = rawBundles.length > 0
+          ? rawBundles.flatMap((b: any) => (b.items ?? []).map(mapRawEvidenceItem))
+          : parsed.evidence_items;
+
+        // Reasoning steps: top-level or inside artifacts.reasoning_trace
+        const reasoningSteps = parsed.reasoning_steps ?? reasoningTrace.steps;
+
+        // Discovered sources from evidence items
+        const discoveredSources: DiscoveredSource[] = parsed.discovered_sources ??
+          rawBundles.flatMap((b: any) =>
+            (b.items ?? []).flatMap((item: any) =>
+              (item.extracted_fields?.discovered_sources ?? []).map((ds: any) => ({
+                url: ds.url ?? "",
+                title: ds.title ?? "",
+                relevance: ds.relevance ?? "medium",
+              }))
+            )
+          );
+
+        const modeMap: Record<string, ExecutionMode> = {
+          development: "dry_run", api: "live", live: "live", replay: "replay", dry_run: "dry_run",
+        };
+
         oracleResult = {
           market_id: String(event.event_id),
           outcome: parseOutcome(parsed.outcome),
           confidence: parsed.confidence ?? 0,
           por_root: parsed.por_root ?? "",
-          prompt_spec_hash: parsed.prompt_spec_hash ?? "",
-          evidence_root: parsed.evidence_root ?? "",
-          reasoning_root: parsed.reasoning_root ?? "",
+          prompt_spec_hash: parsed.prompt_spec_hash ?? verdict.prompt_spec_hash ?? "",
+          evidence_root: parsed.evidence_root ?? verdict.evidence_root ?? "",
+          reasoning_root: parsed.reasoning_root ?? verdict.reasoning_root ?? "",
           ok: parsed.ok ?? true,
-          verification_ok: parsed.verification_ok ?? true,
-          execution_mode: parsed.execution_mode ?? "dry_run",
-          executed_at: parsed.executed_at ?? now,
-          duration_ms: parsed.duration_ms ?? 0,
+          verification_ok: parsed.verification_ok ?? verdictMeta.llm_review?.reasoning_valid ?? true,
+          execution_mode: modeMap[parsed.execution_mode ?? porMeta.mode] ?? (parsed.execution_mode as ExecutionMode) ?? "dry_run",
+          executed_at: parsed.executed_at ?? porBundle.created_at ?? now,
+          duration_ms: parsed.duration_ms ?? rawBundles.reduce((sum: number, b: any) => sum + (b.execution_time_ms ?? 0), 0),
           checks: parsed.checks ?? [],
           errors: parsed.errors ?? [],
-          evidence_summary: parsed.evidence_summary,
-          reasoning_summary: parsed.reasoning_summary,
-          justification: parsed.justification,
-          evidence_items: parsed.evidence_items,
-          evidence_bundles: parsed.evidence_bundles,
-          reasoning_steps: parsed.reasoning_steps,
+          evidence_summary: parsed.evidence_summary ?? reasoningTrace.evidence_summary,
+          reasoning_summary: parsed.reasoning_summary ?? reasoningTrace.reasoning_summary,
+          justification: parsed.justification ?? verdictMeta.justification,
+          evidence_items: allItems?.length > 0 ? allItems : undefined,
+          evidence_bundles: typedBundles,
+          reasoning_steps: reasoningSteps?.length > 0 ? reasoningSteps : undefined,
           confidence_breakdown: parsed.confidence_breakdown,
-          llm_review: parsed.llm_review ?? parsed.artifacts?.verdict?.metadata?.llm_review,
+          llm_review: parsed.llm_review ?? verdictMeta.llm_review
+            ? {
+                reasoning_valid: (parsed.llm_review ?? verdictMeta.llm_review).reasoning_valid ?? true,
+                issues: (parsed.llm_review ?? verdictMeta.llm_review).reasoning_issues ?? [],
+                confidence_adjustments: (parsed.llm_review ?? verdictMeta.llm_review).confidence_adjustments ?? [],
+                final_justification: (parsed.llm_review ?? verdictMeta.llm_review).final_justification ?? "",
+              }
+            : undefined,
           execution_steps: parsed.execution_steps,
-          discovered_sources: parsed.discovered_sources,
+          discovered_sources: discoveredSources.length > 0 ? discoveredSources : undefined,
         };
       }
     } catch {

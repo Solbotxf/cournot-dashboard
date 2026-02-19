@@ -27,6 +27,7 @@ import {
 // ─── Code-gated API helper ──────────────────────────────────────────────────
 
 const STORAGE_KEY = "playground_code";
+const LOCALHOST_MODE = process.env.NEXT_PUBLIC_ENABLE_PLAYGROUND_LOCALHOST_MODE === "true";
 
 class InvalidCodeError extends Error {
   constructor(message: string) {
@@ -38,10 +39,37 @@ class InvalidCodeError extends Error {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * All playground API calls go through /api/proxy/ai_data with a code.
- * The upstream wraps responses as: { code: 0, msg: "Success", data: { result: "<JSON string>" } }
+ * Localhost mode: call http://localhost:8000{path} directly with raw body/method.
+ * Proxy mode: wrap in { code, post_data, path, method } and POST to /api/proxy/ai_data.
  */
 async function callApi(code: string, path: string, body: Record<string, any> = {}, method: "GET" | "POST" = "POST"): Promise<any> {
+  if (LOCALHOST_MODE) {
+    return callLocalhost(path, body, method);
+  }
+  return callProxy(code, path, body, method);
+}
+
+/** Direct call to localhost:8000 — no code wrapping, raw JSON response */
+async function callLocalhost(path: string, body: Record<string, any>, method: "GET" | "POST"): Promise<any> {
+  const url = `http://localhost:8000${path}`;
+  const res = await fetch(url, {
+    method,
+    ...(method === "POST" && {
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+/** Proxy call via /api/proxy/ai_data — wraps body in { code, post_data, path, method } */
+async function callProxy(code: string, path: string, body: Record<string, any>, method: "GET" | "POST"): Promise<any> {
   const res = await fetch("/api/proxy/ai_data", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -267,6 +295,7 @@ export default function PlaygroundPage() {
     toast.error("Invalid access code", { description: "Please re-enter your code." });
   }, []);
 
+
   function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     const code = codeInput.trim();
@@ -290,7 +319,12 @@ export default function PlaygroundPage() {
 
   // Collector selection (for multi-step mode)
   const [availableCollectors, setAvailableCollectors] = useState<CollectorInfo[]>([]);
-  const [selectedCollectors, setSelectedCollectors] = useState<string[]>([]);
+  const [collectorCounts, setCollectorCounts] = useState<Record<string, number>>({});
+
+  // Derive selectedCollectors from counts (e.g. {GeminiGrounded: 2} => ['GeminiGrounded', 'GeminiGrounded'])
+  const selectedCollectors = Object.entries(collectorCounts).flatMap(([id, count]) =>
+    Array(count).fill(id)
+  );
 
   // LLM provider/model selection
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -317,9 +351,9 @@ export default function PlaygroundPage() {
             setAvailableCollectors(collectors);
             const defaultCollector = collectorStep.agents.find((a: any) => !a.is_fallback);
             if (defaultCollector) {
-              setSelectedCollectors([defaultCollector.name]);
+              setCollectorCounts({ [defaultCollector.name]: 1 });
             } else if (collectors.length > 0) {
-              setSelectedCollectors([collectors[0].id]);
+              setCollectorCounts({ [collectors[0].id]: 1 });
             }
           }
         }
@@ -351,7 +385,7 @@ export default function PlaygroundPage() {
   function handleReset() {
     setPhase("input");
     setUserInput("");
-    setSelectedCollectors(availableCollectors.length > 0 ? [availableCollectors[0].id] : []);
+    setCollectorCounts(availableCollectors.length > 0 ? { [availableCollectors[0].id]: 1 } : {});
     setSelectedProvider(null);
     setSelectedModel("");
     setPromptResult(null);
@@ -362,19 +396,22 @@ export default function PlaygroundPage() {
   }
 
   function toggleCollector(collectorId: string) {
-    const willSelect = !selectedCollectors.includes(collectorId);
+    const willSelect = !(collectorCounts[collectorId] > 0);
     if (accessCode) trackPlaygroundCollectorToggle(accessCode, collectorId, willSelect);
-    setSelectedCollectors((prev) => {
-      let next: string[];
-      if (prev.includes(collectorId)) {
-        if (prev.length === 1) return prev;
-        next = prev.filter((c) => c !== collectorId);
+    setCollectorCounts((prev) => {
+      const next = { ...prev };
+      if (next[collectorId] > 0) {
+        // Don't allow removing the last collector
+        const totalEnabled = Object.values(next).reduce((s, c) => s + c, 0);
+        if (totalEnabled <= next[collectorId]) return prev;
+        delete next[collectorId];
       } else {
-        next = [...prev, collectorId];
+        next[collectorId] = 1;
       }
 
-      const hasGemini = next.some((c) => c.toLowerCase().includes("geminigrounded"));
-      const onlyGemini = hasGemini && next.length === 1;
+      const enabledIds = Object.keys(next).filter((id) => next[id] > 0);
+      const hasGemini = enabledIds.some((c) => c.toLowerCase().includes("geminigrounded"));
+      const onlyGemini = hasGemini && enabledIds.length === 1;
 
       if (onlyGemini) {
         const googleProvider = providers.find((p) => p.provider.toLowerCase() === "google");
@@ -384,6 +421,21 @@ export default function PlaygroundPage() {
         }
       }
 
+      return next;
+    });
+  }
+
+  function setCollectorCount(collectorId: string, count: number) {
+    setCollectorCounts((prev) => {
+      const next = { ...prev };
+      if (count <= 0) {
+        // Don't allow removing the last collector
+        const totalEnabled = Object.values(next).reduce((s, c) => s + c, 0);
+        if (totalEnabled <= (next[collectorId] ?? 0)) return prev;
+        delete next[collectorId];
+      } else {
+        next[collectorId] = Math.min(count, 5);
+      }
       return next;
     });
   }
@@ -697,7 +749,9 @@ export default function PlaygroundPage() {
             useMultiStep={useMultiStep}
             availableCollectors={availableCollectors}
             selectedCollectors={selectedCollectors}
+            collectorCounts={collectorCounts}
             onToggleCollector={toggleCollector}
+            onCollectorCountChange={setCollectorCount}
             providers={providers}
             selectedProvider={selectedProvider}
             selectedModel={selectedModel}

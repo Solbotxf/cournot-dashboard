@@ -29,8 +29,8 @@ const TEMPLATES = [
     text: `Fed rate hike in 2025?\n\nThis market will resolve to "Yes" if the upper bound of the target federal funds rate is increased at any point between January 1, 2025 and the Fed's December 2025 meeting, currently scheduled for December 9-10. Otherwise, this market will resolve to "No".\n\nThis market may not resolve to "No" until the Fed has released its rate changes information following its December meeting.\n\nThe primary resolution source for this market will be the official website of the Federal Reserve (https://www.federalreserve.gov/monetarypolicy/openmarket.htm), however a consensus of credible reporting may also be used.\n\nCreated At: Dec 29, 2024, 5:50 PM ET`,
   },
   {
-    label: "SpaceX Starship",
-    text: `Will SpaceX Starship complete a successful orbital flight by June 2026?\n\nThis market will resolve to "Yes" if SpaceX's Starship vehicle (including Super Heavy booster) completes a full orbital trajectory with both stages performing nominally before June 30, 2026, 11:59 PM UTC. Otherwise, this market will resolve to "No".\n\nA successful flight requires the vehicle to reach orbital velocity and complete at least one orbit. Suborbital test flights do not count.`,
+    label: "US Venezuela",
+    text: `Will the U.S. invade Venezuela by March 31, 2026?\n\nThis market will resolve to "Yes" if the United States commences a military offensive intended to establish control over any portion of Venezuela between November 3, 2025 and March 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to "No".\n\nFor the purposes of this market, land de facto controlled by Venezuela or the United States as of September 6, 2025, 12:00 PM ET, will be considered the sovereign territory of that country.\n\nThe resolution source for this market will be a consensus of credible sources.\n\nCreated At: Nov 3, 2025, 6:50 PM ET`,
   },
   {
     label: "META Earnings",
@@ -56,7 +56,9 @@ interface PlaygroundInputProps {
   // Collector options
   availableCollectors?: CollectorInfo[];
   selectedCollectors?: string[];
+  collectorCounts?: Record<string, number>;
   onToggleCollector?: (collectorId: string) => void;
+  onCollectorCountChange?: (collectorId: string, count: number) => void;
   // LLM provider/model selection
   providers?: ProviderInfo[];
   selectedProvider?: string | null;
@@ -75,7 +77,9 @@ export function PlaygroundInput({
   compact,
   availableCollectors = [],
   selectedCollectors = [],
+  collectorCounts = {},
   onToggleCollector,
+  onCollectorCountChange,
   providers = [],
   selectedProvider = null,
   selectedModel = "",
@@ -135,47 +139,82 @@ export function PlaygroundInput({
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {availableCollectors.map((collector) => {
-                  const isSelected = selectedCollectors.includes(collector.id);
+                  const count = collectorCounts[collector.id] ?? 0;
+                  const isSelected = count > 0;
                   return (
-                    <button
-                      key={collector.id}
-                      onClick={() => onToggleCollector(collector.id)}
-                      disabled={isLoading}
-                      title={collector.description}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
-                        isSelected
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                          : "bg-muted/30 text-muted-foreground border border-border/50 hover:border-emerald-500/30 hover:text-emerald-300",
-                        isLoading && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      <div
+                    <div key={collector.id} className="inline-flex items-center gap-0">
+                      <button
+                        onClick={() => onToggleCollector(collector.id)}
+                        disabled={isLoading}
+                        title={collector.description}
                         className={cn(
-                          "w-3 h-3 rounded-sm border flex items-center justify-center",
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-all",
+                          isSelected && count > 1 ? "rounded-l-md" : "rounded-md",
                           isSelected
-                            ? "border-emerald-400 bg-emerald-500"
-                            : "border-muted-foreground/40"
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                            : "bg-muted/30 text-muted-foreground border border-border/50 hover:border-emerald-500/30 hover:text-emerald-300",
+                          isLoading && "opacity-50 cursor-not-allowed"
                         )}
                       >
-                        {isSelected && (
-                          <svg
-                            className="w-2 h-2 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+                        <div
+                          className={cn(
+                            "w-3 h-3 rounded-sm border flex items-center justify-center",
+                            isSelected
+                              ? "border-emerald-400 bg-emerald-500"
+                              : "border-muted-foreground/40"
+                          )}
+                        >
+                          {isSelected && (
+                            <svg
+                              className="w-2 h-2 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        {collector.name}
+                        {isSelected && count > 1 && (
+                          <span className="text-[10px] text-emerald-400/80 font-normal">
+                            x{count}
+                          </span>
                         )}
-                      </div>
-                      {collector.name}
-                    </button>
+                      </button>
+                      {isSelected && onCollectorCountChange && (
+                        <div className="inline-flex items-center border border-l-0 border-emerald-500/40 rounded-r-md overflow-hidden">
+                          <button
+                            onClick={() => onCollectorCountChange(collector.id, count - 1)}
+                            disabled={isLoading}
+                            className={cn(
+                              "px-1.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-colors",
+                              isLoading && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            -
+                          </button>
+                          <span className="px-1 py-1 text-[11px] font-medium text-emerald-300 min-w-[18px] text-center bg-emerald-500/10">
+                            {count}
+                          </span>
+                          <button
+                            onClick={() => onCollectorCountChange(collector.id, count + 1)}
+                            disabled={isLoading || count >= 5}
+                            className={cn(
+                              "px-1.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-colors",
+                              (isLoading || count >= 5) && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
