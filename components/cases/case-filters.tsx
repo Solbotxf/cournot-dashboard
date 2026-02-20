@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 
-export type SourceFilter = "ALL" | "polymarket" | "myriad";
+export type SourceFilter = "ALL" | "polymarket" | "myriad" | "kalshi" | "limitless";
 export type MatchResultFilter = "ALL" | "match" | "invalid";
 
 export interface FilterState {
@@ -71,6 +71,8 @@ export function CaseFilters({
           { value: "ALL", label: "All" },
           { value: "polymarket", label: "Polymarket" },
           { value: "myriad", label: "Myriad" },
+          { value: "kalshi", label: "Kalshi" },
+          { value: "limitless", label: "Limitless" },
         ]}
       />
 
