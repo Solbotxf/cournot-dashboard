@@ -30,11 +30,9 @@ export interface ApiResponse<T> {
 }
 
 function parseOutcome(result: string): Outcome {
-  const upper = result?.toUpperCase?.() ?? "";
-  if (upper === "YES" || upper === "TRUE" || upper === "1") return "YES";
-  if (upper === "NO" || upper === "FALSE" || upper === "0") return "NO";
-  if (upper === "INVALID") return "INVALID";
-  return "UNKNOWN";
+  const trimmed = result?.trim?.() ?? "";
+  if (trimmed === "") return "UNKNOWN";
+  return trimmed.toUpperCase();
 }
 
 function parseSourceStatus(isClosed: boolean): SourceStatus {

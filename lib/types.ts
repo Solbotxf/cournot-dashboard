@@ -7,7 +7,7 @@ export type SourceStatus =
   | "CANCELLED"
   | "DISPUTED";
 
-export type Outcome = "YES" | "NO" | "INVALID" | "UNKNOWN";
+export type Outcome = string;
 
 export interface SourceInfo {
   platform: string;

@@ -22,12 +22,14 @@ export function SourceStatusBadge({ status }: { status: SourceStatus }) {
 
 // ─── Outcome Badge ──────────────────────────────────────────────────────────
 
-const outcomeStyles: Record<Outcome, string> = {
+const outcomeStyles: Record<string, string> = {
   YES: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   NO: "bg-red-500/10 text-red-400 border-red-500/20",
   INVALID: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   UNKNOWN: "bg-slate-500/10 text-slate-400 border-slate-500/20",
 };
+
+const defaultOutcomeStyle = "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
 
 export function OutcomeBadge({
   outcome,
@@ -41,7 +43,7 @@ export function OutcomeBadge({
       variant="outline"
       className={cn(
         "font-semibold",
-        outcomeStyles[outcome],
+        outcomeStyles[outcome] ?? defaultOutcomeStyle,
         size === "lg" ? "text-sm px-3 py-1" : "text-[11px]"
       )}
     >
