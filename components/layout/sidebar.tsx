@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FileText,
   FlaskConical,
+  Code2,
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,12 @@ const navGroups = [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/cases", label: "Cases", icon: FileText },
       { href: "/playground", label: "Playground", icon: FlaskConical },
+    ],
+  },
+  {
+    label: "Developer",
+    items: [
+      { href: "/developer", label: "API Reference", icon: Code2 },
     ],
   },
 ];
