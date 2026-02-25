@@ -23,18 +23,6 @@ import {
   FileText,
 } from "lucide-react";
 
-function formatDateTime(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
-}
-
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   const s = ms / 1000;
@@ -86,12 +74,6 @@ export function HeroResolved({ c }: { c: MarketCase }) {
               <OutcomeBadge outcome={c.source.official_outcome} size="lg" />
               <SourceStatusBadge status={c.source.status} />
             </div>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p>
-                <span className="text-muted-foreground/60">Resolved: </span>
-                {formatDateTime(c.source.official_resolved_at)}
-              </p>
-            </div>
             <a
               href={c.source.event_url}
               target="_blank"
@@ -138,12 +120,6 @@ export function HeroResolved({ c }: { c: MarketCase }) {
                   {!oracle.ok && (
                     <span className="text-[11px] text-red-400 font-medium">Run errored</span>
                   )}
-                </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>
-                    <span className="text-muted-foreground/60">Executed: </span>
-                    {formatDateTime(oracle.executed_at)}
-                  </p>
                 </div>
                 {(oracle.errors?.length ?? 0) > 0 && (
                   <ErrorCallout errors={oracle.errors} />
