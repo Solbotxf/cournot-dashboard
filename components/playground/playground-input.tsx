@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,22 @@ import {
   Play,
   Layers,
   Cpu,
+  ChevronDown,
 } from "lucide-react";
+
+const ADVANCED_COLLECTOR_IDS = new Set([
+  "CollectorCRP",
+  "CollectorPAN",
+  "CollectorAgenticRAG",
+  "CollectorGraphRAG",
+  "CollectorHTTP",
+  "CollectorMock",
+]);
+
+const DEFERRED_DISABLED_IDS = new Set([
+  "CollectorSitePinned",
+  "CollectorWebPageReader",
+]);
 
 interface ProviderInfo {
   provider: string;
@@ -59,6 +75,8 @@ interface PlaygroundInputProps {
   collectorCounts?: Record<string, number>;
   onToggleCollector?: (collectorId: string) => void;
   onCollectorCountChange?: (collectorId: string, count: number) => void;
+  // Deferred source discovery
+  deferredSources?: boolean;
   // LLM provider/model selection
   providers?: ProviderInfo[];
   selectedProvider?: string | null;
@@ -80,12 +98,104 @@ export function PlaygroundInput({
   collectorCounts = {},
   onToggleCollector,
   onCollectorCountChange,
+  deferredSources = false,
   providers = [],
   selectedProvider = null,
   selectedModel = "",
   onProviderChange,
   onModelChange,
 }: PlaygroundInputProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const primaryCollectors = availableCollectors.filter(
+    (c) => !ADVANCED_COLLECTOR_IDS.has(c.id)
+  );
+  const advancedCollectors = availableCollectors.filter((c) =>
+    ADVANCED_COLLECTOR_IDS.has(c.id)
+  );
+
+  const renderCollectorButton = (collector: CollectorInfo) => {
+    const count = collectorCounts[collector.id] ?? 0;
+    const isSelected = count > 0;
+    const isDeferredDisabled = deferredSources && DEFERRED_DISABLED_IDS.has(collector.id);
+    return (
+      <div key={collector.id} className="inline-flex items-center gap-0">
+        <button
+          onClick={() => onToggleCollector?.(collector.id)}
+          disabled={isLoading || isDeferredDisabled}
+          title={isDeferredDisabled ? "Requires explicit source URLs — not available when sources are deferred" : collector.description}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-all",
+            isSelected && count > 1 ? "rounded-l-md" : "rounded-md",
+            isDeferredDisabled
+              ? "opacity-40 cursor-not-allowed bg-muted/20 text-muted-foreground border border-border/30 line-through"
+              : isSelected
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                : "bg-muted/30 text-muted-foreground border border-border/50 hover:border-emerald-500/30 hover:text-emerald-300",
+            isLoading && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <div
+            className={cn(
+              "w-3 h-3 rounded-sm border flex items-center justify-center",
+              isSelected
+                ? "border-emerald-400 bg-emerald-500"
+                : "border-muted-foreground/40"
+            )}
+          >
+            {isSelected && (
+              <svg
+                className="w-2 h-2 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
+          </div>
+          {collector.name}
+          {isSelected && count > 1 && (
+            <span className="text-[10px] text-emerald-400/80 font-normal">
+              x{count}
+            </span>
+          )}
+        </button>
+        {isSelected && onCollectorCountChange && (
+          <div className="inline-flex items-center border border-l-0 border-emerald-500/40 rounded-r-md overflow-hidden">
+            <button
+              onClick={() => onCollectorCountChange(collector.id, count - 1)}
+              disabled={isLoading}
+              className={cn(
+                "px-1.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-colors",
+                isLoading && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              -
+            </button>
+            <span className="px-1 py-1 text-[11px] font-medium text-emerald-300 min-w-[18px] text-center bg-emerald-500/10">
+              {count}
+            </span>
+            <button
+              onClick={() => onCollectorCountChange(collector.id, count + 1)}
+              disabled={isLoading || count >= 5}
+              className={cn(
+                "px-1.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-colors",
+                (isLoading || count >= 5) && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Card className="border-border/50 overflow-hidden">
@@ -137,87 +247,63 @@ export function PlaygroundInput({
                   {selectedCollectors.length} selected
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {availableCollectors.map((collector) => {
-                  const count = collectorCounts[collector.id] ?? 0;
-                  const isSelected = count > 0;
-                  return (
-                    <div key={collector.id} className="inline-flex items-center gap-0">
-                      <button
-                        onClick={() => onToggleCollector(collector.id)}
-                        disabled={isLoading}
-                        title={collector.description}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium transition-all",
-                          isSelected && count > 1 ? "rounded-l-md" : "rounded-md",
-                          isSelected
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                            : "bg-muted/30 text-muted-foreground border border-border/50 hover:border-emerald-500/30 hover:text-emerald-300",
-                          isLoading && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "w-3 h-3 rounded-sm border flex items-center justify-center",
-                            isSelected
-                              ? "border-emerald-400 bg-emerald-500"
-                              : "border-muted-foreground/40"
-                          )}
-                        >
-                          {isSelected && (
-                            <svg
-                              className="w-2 h-2 text-white"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        {collector.name}
-                        {isSelected && count > 1 && (
-                          <span className="text-[10px] text-emerald-400/80 font-normal">
-                            x{count}
-                          </span>
-                        )}
-                      </button>
-                      {isSelected && onCollectorCountChange && (
-                        <div className="inline-flex items-center border border-l-0 border-emerald-500/40 rounded-r-md overflow-hidden">
-                          <button
-                            onClick={() => onCollectorCountChange(collector.id, count - 1)}
-                            disabled={isLoading}
-                            className={cn(
-                              "px-1.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-colors",
-                              isLoading && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            -
-                          </button>
-                          <span className="px-1 py-1 text-[11px] font-medium text-emerald-300 min-w-[18px] text-center bg-emerald-500/10">
-                            {count}
-                          </span>
-                          <button
-                            onClick={() => onCollectorCountChange(collector.id, count + 1)}
-                            disabled={isLoading || count >= 5}
-                            className={cn(
-                              "px-1.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20 transition-colors",
-                              (isLoading || count >= 5) && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            +
-                          </button>
-                        </div>
+
+              {/* Primary collectors */}
+              {primaryCollectors.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {primaryCollectors.map(renderCollectorButton)}
+                </div>
+              )}
+
+              {/* Deferred source discovery notice */}
+              {deferredSources && (
+                <div className="flex items-start gap-2 rounded-md bg-blue-500/10 border border-blue-500/20 px-2.5 py-1.5">
+                  <span className="text-blue-400 text-sm leading-none mt-0.5">&#9432;</span>
+                  <span className="text-[11px] text-blue-300/90">
+                    Source discovery is deferred — no explicit URLs are available in the prompt spec. SitePinned and WebPageReader are disabled because they require known source URLs.
+                  </span>
+                </div>
+              )}
+
+              {/* Advanced collectors toggle */}
+              {advancedCollectors.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced((v) => !v)}
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-emerald-300 transition-colors"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "h-3.5 w-3.5 transition-transform",
+                        showAdvanced && "rotate-180"
                       )}
+                    />
+                    Advanced Collectors ({advancedCollectors.length})
+                  </button>
+                  {showAdvanced && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {advancedCollectors.map(renderCollectorButton)}
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                </>
+              )}
+
+              {/* Selected collectors description panel */}
+              {selectedCollectors.length > 0 && (
+                <div className="space-y-1 border-t border-emerald-500/20 pt-2">
+                  {availableCollectors
+                    .filter((c) => (collectorCounts[c.id] ?? 0) > 0)
+                    .map((c) => (
+                      <div key={c.id} className="text-[11px] text-emerald-300/80">
+                        <span className="font-semibold text-emerald-300">{c.name}</span>
+                        {" — "}
+                        {c.description}
+                      </div>
+                    ))}
+                </div>
+              )}
+
               {selectedCollectors.some((c) => c.toLowerCase().includes("graphrag")) && (
                 <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5">
                   <span className="text-amber-400 text-sm leading-none mt-0.5">&#9888;</span>

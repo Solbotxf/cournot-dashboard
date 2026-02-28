@@ -752,6 +752,9 @@ export default function PlaygroundPage() {
             collectorCounts={collectorCounts}
             onToggleCollector={toggleCollector}
             onCollectorCountChange={setCollectorCount}
+            deferredSources={promptResult?.prompt_spec?.data_requirements?.some(
+              (dr) => dr.deferred_source_discovery
+            )}
             providers={providers}
             selectedProvider={selectedProvider}
             selectedModel={selectedModel}
