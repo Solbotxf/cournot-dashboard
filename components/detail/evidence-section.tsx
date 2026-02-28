@@ -212,7 +212,8 @@ export function EvidenceSection({
 // ─── Evidence Bundle Card ─────────────────────────────────────────────────
 
 const collectorColors: Record<string, string> = {
-  CollectorLLM: "text-violet-400 border-violet-500/30 bg-violet-500/10",
+  CollectorWebPageReader: "text-violet-400 border-violet-500/30 bg-violet-500/10",
+  CollectorSitePinned: "text-indigo-400 border-indigo-500/30 bg-indigo-500/10",
   CollectorHyDE: "text-sky-400 border-sky-500/30 bg-sky-500/10",
   CollectorHTTP: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   CollectorMock: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",

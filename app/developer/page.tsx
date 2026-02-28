@@ -295,10 +295,11 @@ function EndpointSection({
 // ─── Data ───────────────────────────────────────────────────────────────────
 
 const COLLECTORS = [
-  { name: "CollectorGeminiGrounded", priority: 200, description: "Google Gemini grounded search collector" },
+  { name: "CollectorOpenSearch", priority: 200, description: "Open web search collector" },
   { name: "CollectorCRP", priority: 195, description: "CRP (Contextual Retrieval Pipeline) collector" },
   { name: "CollectorHyDE", priority: 190, description: "HyDE (Hypothetical Document Embeddings) collector" },
-  { name: "CollectorLLM", priority: 180, description: "General-purpose LLM-based collector" },
+  { name: "CollectorWebPageReader", priority: 180, description: "Fetches and reads specific web pages for evidence" },
+  { name: "CollectorSitePinned", priority: 175, description: "Targets pinned/known source URLs from the prompt spec" },
   { name: "CollectorPAN", priority: 170, description: "PAN (Parallel Augmented Navigation) collector" },
   { name: "CollectorAgenticRAG", priority: 160, description: "Agentic RAG collector with autonomous retrieval" },
   { name: "CollectorGraphRAG", priority: 150, description: "Graph-based RAG collector" },
@@ -733,7 +734,7 @@ ToolPlan {
           requestExample={`{
   "prompt_spec": { ... },
   "tool_plan":   { ... },
-  "collectors":  ["CollectorLLM", "CollectorGeminiGrounded"],
+  "collectors":  ["CollectorWebPageReader", "CollectorOpenSearch"],
   "include_raw_content": false
 }`}
           responseFields={[
@@ -745,12 +746,12 @@ ToolPlan {
           ]}
           responseExample={`{
   "ok": true,
-  "collectors_used": ["CollectorLLM", "CollectorGeminiGrounded"],
+  "collectors_used": ["CollectorWebPageReader", "CollectorOpenSearch"],
   "evidence_bundles": [
     {
       "bundle_id": "eb_a1b2c3",
       "market_id": "mk_3f5b9c7e",
-      "collector_name": "CollectorLLM",
+      "collector_name": "CollectorWebPageReader",
       "weight": 1.0,
       "items": [
         {
@@ -777,7 +778,7 @@ ToolPlan {
       "plan_id": "plan_abc123",
       "calls": [
         {
-          "tool": "CollectorLLM",
+          "tool": "CollectorWebPageReader",
           "started_at": "...",
           "ended_at": "...",
           "error": null
@@ -1430,7 +1431,7 @@ print(f"[1/5] Prompt compiled: {prompt['market_id']}")
 collect = call("/step/collect", {
     "prompt_spec": spec,
     "tool_plan":   plan,
-    "collectors":  ["CollectorLLM"],
+    "collectors":  ["CollectorWebPageReader"],
     "include_raw_content": False,
 })
 bundles = collect["evidence_bundles"]
