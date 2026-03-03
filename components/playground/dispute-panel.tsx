@@ -24,6 +24,8 @@ export type DisputeTargetArtifact =
 
 export interface ResolutionArtifacts {
   prompt_spec: any;
+  tool_plan?: any;
+  collectors_used?: string[];
   evidence_bundles: any[];
   reasoning_trace: any;
   verdict: any;
@@ -73,6 +75,7 @@ export function DisputePanel({
   const [promptSpecOverrideJson, setPromptSpecOverrideJson] = useState<string>("{}");
 
   const [submitting, setSubmitting] = useState(false);
+  const [rerunCollect, setRerunCollect] = useState(false);
 
   const selectedEvidenceBundle = useMemo(() => {
     const bundles = artifacts.evidence_bundles ?? [];
@@ -118,7 +121,7 @@ export function DisputePanel({
     }
 
     const payload = {
-      mode: "reasoning_only",
+      mode: rerunCollect ? "full_rerun" : "reasoning_only",
       case_id: caseId || null,
       reason_code: reasonCode,
       message: message.trim(),
@@ -127,8 +130,10 @@ export function DisputePanel({
         leaf_path: leafPath.trim() || null,
       },
       prompt_spec: artifacts.prompt_spec,
-      evidence_bundle: selectedEvidenceBundle,
-      reasoning_trace: targetArtifact === "verdict" || targetArtifact === "reasoning_trace" ? artifacts.reasoning_trace : null,
+      evidence_bundle: rerunCollect ? null : selectedEvidenceBundle,
+      reasoning_trace: rerunCollect ? null : (targetArtifact === "verdict" || targetArtifact === "reasoning_trace" ? artifacts.reasoning_trace : null),
+      tool_plan: rerunCollect ? (artifacts.tool_plan ?? null) : null,
+      collectors: rerunCollect ? (artifacts.collectors_used ?? null) : null,
       patch:
         (evidenceItemsAppend && evidenceItemsAppend.length > 0) || (promptSpecOverride && Object.keys(promptSpecOverride).length > 0)
           ? {
@@ -219,7 +224,17 @@ export function DisputePanel({
         </div>
 
         <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Evidence bundle to send</div>
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-muted-foreground">Evidence bundle to send</div>
+            <label className="text-xs text-muted-foreground inline-flex items-center gap-2 select-none">
+              <input
+                type="checkbox"
+                checked={rerunCollect}
+                onChange={(e) => setRerunCollect(e.target.checked)}
+              />
+              Rerun evidence collection (collect)
+            </label>
+          </div>
           <Select value={String(bundleIndex)} onValueChange={(v) => setBundleIndex(parseInt(v, 10))}>
             <SelectTrigger>
               <SelectValue placeholder="Select bundle" />
@@ -233,8 +248,13 @@ export function DisputePanel({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            MVP: protocol /dispute currently accepts a single evidence_bundle.
+            If collect rerun is ON, the backend will ignore this bundle and re-collect evidence using tool_plan + collectors.
           </p>
+          {rerunCollect && (!artifacts.tool_plan || !artifacts.collectors_used || artifacts.collectors_used.length === 0) && (
+            <p className="text-xs text-red-400">
+              Missing tool_plan or collectors_used in this run; cannot full_rerun collect.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -300,7 +320,7 @@ export function DisputePanel({
         <div className="flex gap-2">
           <button
             onClick={handleSubmit}
-            disabled={disabled || submitting}
+            disabled={disabled || submitting || (rerunCollect && (!artifacts.tool_plan || !artifacts.collectors_used || artifacts.collectors_used.length === 0))}
             className={cn(
               "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
               "bg-violet-500/20 text-violet-200 border border-violet-500/40 hover:bg-violet-500/25",

@@ -580,6 +580,8 @@ export default function PlaygroundPage() {
       console.log("resolveResult:", JSON.stringify(summary, null, 2));
       setResolutionArtifacts({
         prompt_spec: promptSpec,
+        tool_plan: toolPlan,
+        collectors_used: selectedCollectors,
         evidence_bundles: evidenceBundles,
         reasoning_trace: reasoningTrace,
         verdict,
@@ -619,6 +621,8 @@ export default function PlaygroundPage() {
       const artifacts = data?.artifacts ?? {};
       setResolutionArtifacts({
         prompt_spec: artifacts.prompt_spec ?? promptResult.prompt_spec,
+        tool_plan: promptResult.tool_plan,
+        collectors_used: selectedCollectors,
         evidence_bundles: artifacts.evidence_bundles ?? (artifacts.evidence_bundle ? [artifacts.evidence_bundle] : []),
         reasoning_trace: artifacts.reasoning_trace,
         verdict: artifacts.verdict,
