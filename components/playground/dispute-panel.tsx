@@ -69,6 +69,9 @@ export function DisputePanel({
   // Evidence patch (append items)
   const [appendItemsJson, setAppendItemsJson] = useState<string>("[]");
 
+  // Prompt spec override (partial JSON; merged server-side)
+  const [promptSpecOverrideJson, setPromptSpecOverrideJson] = useState<string>("{}");
+
   const [submitting, setSubmitting] = useState(false);
 
   const selectedEvidenceBundle = useMemo(() => {
@@ -100,6 +103,20 @@ export function DisputePanel({
       return;
     }
 
+    let promptSpecOverride: Record<string, any> | null = null;
+    try {
+      const parsed = JSON.parse(promptSpecOverrideJson || "{}");
+      if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("prompt_spec_override must be a JSON object");
+      }
+      promptSpecOverride = parsed;
+    } catch (e) {
+      toast.error("Invalid PromptSpec override JSON", {
+        description: e instanceof Error ? e.message : "Expected JSON object",
+      });
+      return;
+    }
+
     const payload = {
       mode: "reasoning_only",
       case_id: caseId || null,
@@ -112,7 +129,17 @@ export function DisputePanel({
       prompt_spec: artifacts.prompt_spec,
       evidence_bundle: selectedEvidenceBundle,
       reasoning_trace: targetArtifact === "verdict" || targetArtifact === "reasoning_trace" ? artifacts.reasoning_trace : null,
-      patch: evidenceItemsAppend && evidenceItemsAppend.length > 0 ? { evidence_items_append: evidenceItemsAppend } : null,
+      patch:
+        (evidenceItemsAppend && evidenceItemsAppend.length > 0) || (promptSpecOverride && Object.keys(promptSpecOverride).length > 0)
+          ? {
+              ...(evidenceItemsAppend && evidenceItemsAppend.length > 0
+                ? { evidence_items_append: evidenceItemsAppend }
+                : {}),
+              ...(promptSpecOverride && Object.keys(promptSpecOverride).length > 0
+                ? { prompt_spec_override: promptSpecOverride }
+                : {}),
+            }
+          : null,
     };
 
     setSubmitting(true);
@@ -220,6 +247,53 @@ export function DisputePanel({
           />
           <p className="text-xs text-muted-foreground">
             If provided, these EvidenceItem objects will be appended to evidence_bundle.items before rerun.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Patch: prompt_spec_override (JSON object, optional)</div>
+          <Textarea
+            value={promptSpecOverrideJson}
+            onChange={(e) => setPromptSpecOverrideJson(e.target.value)}
+            rows={8}
+            placeholder='{"extra": {"assumptions": [...]}, "market": {"event_definition": "..."}}'
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={cn(
+                "text-xs px-2 py-1 rounded-md border border-border/50 bg-muted/20 hover:bg-muted/30",
+                disabled && "opacity-50 cursor-not-allowed"
+              )}
+              disabled={disabled}
+              onClick={() => {
+                try {
+                  setPromptSpecOverrideJson(JSON.stringify(artifacts.prompt_spec ?? {}, null, 2));
+                } catch {
+                  setPromptSpecOverrideJson("{}");
+                }
+              }}
+            >
+              Prefill with full prompt_spec
+            </button>
+
+            <button
+              type="button"
+              className={cn(
+                "text-xs px-2 py-1 rounded-md border border-border/50 bg-muted/20 hover:bg-muted/30",
+                disabled && "opacity-50 cursor-not-allowed"
+              )}
+              disabled={disabled}
+              onClick={() => {
+                const assumptions = artifacts.prompt_spec?.extra?.assumptions ?? [];
+                setPromptSpecOverrideJson(JSON.stringify({ extra: { assumptions } }, null, 2));
+              }}
+            >
+              Prefill assumptions only
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Server will deep-merge this object into the provided prompt_spec. Lists are replaced wholesale.
           </p>
         </div>
 
