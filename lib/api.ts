@@ -280,6 +280,68 @@ export async function fetchEvents(
   };
 }
 
+// ─── Monitoring (Web Search Events) ──────────────────────────────────────────
+
+export interface WebSearchResult {
+  search_reasoning: string;
+  search_is_closed: boolean;
+  created_time: string;
+}
+
+export interface MonitoringEvent {
+  event_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  is_closed: boolean;
+  result: string;
+  result_price: string;
+  ai_prompt: string;
+  ai_result: string;
+  source: string;
+  match_result: string;
+  id: number;
+  web_search_results: WebSearchResult[];
+}
+
+export interface MonitoringEventsData {
+  events: MonitoringEvent[];
+  total: number;
+}
+
+/** Fetch monitoring events (web search scan results) */
+export async function fetchMonitoringEvents(
+  pageNum: number = 1,
+  pageSize: number = 20
+): Promise<{ events: MonitoringEvent[]; total: number; pageNum: number; pageSize: number }> {
+  const params = new URLSearchParams({
+    page_num: String(pageNum),
+    page_size: String(pageSize),
+  });
+  const url = `${API_BASE}/web_search_events?${params.toString()}`;
+
+  const res = await fetch(url, { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch monitoring events: ${res.status} ${res.statusText}`);
+  }
+
+  const response: ApiResponse<MonitoringEventsData> = await res.json();
+
+  if (response.code !== 0) {
+    throw new Error(response.msg || "API error");
+  }
+
+  return {
+    events: response.data.events,
+    total: response.data.total,
+    pageNum,
+    pageSize,
+  };
+}
+
 /** Fetch a single event by ID (searches through paginated results) */
 export async function fetchEventById(eventId: string): Promise<MarketCase | null> {
   // The API doesn't have a single-event endpoint, so we search through pages
