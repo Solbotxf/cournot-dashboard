@@ -373,6 +373,7 @@ export default function PlaygroundPage() {
   // Results
   const [promptResult, setPromptResult] = useState<ParseResult | null>(null);
   const [resolveResult, setResolveResult] = useState<RunSummary | null>(null);
+  const [resolutionArtifacts, setResolutionArtifacts] = useState<any | null>(null);
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
 
   // Pipeline progress
@@ -390,6 +391,7 @@ export default function PlaygroundPage() {
     setSelectedModel("");
     setPromptResult(null);
     setResolveResult(null);
+    setResolutionArtifacts(null);
     setExecutionLogs([]);
     setPipelineSteps(createInitialSteps());
     if (accessCode) trackPlaygroundReset(accessCode);
@@ -446,6 +448,7 @@ export default function PlaygroundPage() {
     setPhase("prompting");
     setPromptResult(null);
     setResolveResult(null);
+    setResolutionArtifacts(null);
     setExecutionLogs([]);
     setPipelineSteps(createInitialSteps());
     setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "running"));
@@ -575,6 +578,13 @@ export default function PlaygroundPage() {
       );
 
       console.log("resolveResult:", JSON.stringify(summary, null, 2));
+      setResolutionArtifacts({
+        prompt_spec: promptSpec,
+        evidence_bundles: evidenceBundles,
+        reasoning_trace: reasoningTrace,
+        verdict,
+        por_bundle: porBundle,
+      });
       setResolveResult(summary);
       setPhase("resolved");
     } catch (err) {
@@ -606,6 +616,14 @@ export default function PlaygroundPage() {
 
       const summary = toRunSummary(data);
       console.log("resolveResult:", JSON.stringify(summary, null, 2));
+      const artifacts = data?.artifacts ?? {};
+      setResolutionArtifacts({
+        prompt_spec: artifacts.prompt_spec ?? promptResult.prompt_spec,
+        evidence_bundles: artifacts.evidence_bundles ?? (artifacts.evidence_bundle ? [artifacts.evidence_bundle] : []),
+        reasoning_trace: artifacts.reasoning_trace,
+        verdict: artifacts.verdict,
+        por_bundle: artifacts.por_bundle,
+      });
       setResolveResult(summary);
       setPhase("resolved");
     } catch (err) {
@@ -803,6 +821,11 @@ export default function PlaygroundPage() {
           resolveResult={resolveResult}
           userInput={userInput}
           executionLogs={executionLogs}
+          resolutionArtifacts={resolutionArtifacts}
+          onSubmitDispute={async (payload) => {
+            if (!accessCode) throw new Error("Missing access code");
+            return callApi(accessCode, "/dispute", payload, "POST");
+          }}
         />
       )}
     </div>

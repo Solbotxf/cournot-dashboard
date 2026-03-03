@@ -1,5 +1,8 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { useState } from "react";
 import type { MarketCase, ParseResult, RunSummary, ExecutionLog } from "@/lib/types";
 import { HeroPending } from "@/components/detail/hero-pending";
 import { HeroResolved } from "@/components/detail/hero-resolved";
@@ -11,11 +14,16 @@ import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
 import { EvidenceSection } from "@/components/detail/evidence-section";
 import { ExecutionLogsCard } from "@/components/detail/execution-logs";
 
+import { DisputePanel, type ResolutionArtifacts, type DisputeResponse } from "@/components/playground/dispute-panel";
+import { DisputeDiff } from "@/components/playground/dispute-diff";
+
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
   resolveResult: RunSummary | null;
   userInput: string;
   executionLogs?: ExecutionLog[];
+  resolutionArtifacts?: ResolutionArtifacts | null;
+  onSubmitDispute?: (payload: any) => Promise<DisputeResponse>;
 }
 
 function buildSyntheticCase(
@@ -53,12 +61,16 @@ export function PlaygroundResults({
   resolveResult,
   userInput,
   executionLogs = [],
+  resolutionArtifacts = null,
+  onSubmitDispute,
 }: PlaygroundResultsProps) {
   // Debug: log resolveResult to console
   console.log("resolveResult:", JSON.stringify(resolveResult, null, 2));
 
   const c = buildSyntheticCase(promptResult, resolveResult, userInput);
   const isResolved = resolveResult !== null;
+
+  const [disputeResult, setDisputeResult] = useState<DisputeResponse | null>(null);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -68,6 +80,24 @@ export function PlaygroundResults({
       {/* Evidence Section (resolve only) */}
       {isResolved && resolveResult.evidence_items && resolveResult.evidence_items.length > 0 && (
         <EvidenceSection result={resolveResult} toolPlan={promptResult.tool_plan} />
+      )}
+
+      {/* Dispute (playground only) */}
+      {isResolved && resolutionArtifacts && onSubmitDispute && (
+        <DisputePanel
+          artifacts={resolutionArtifacts}
+          onSubmit={onSubmitDispute}
+          onResult={(res) => setDisputeResult(res)}
+        />
+      )}
+
+      {isResolved && disputeResult && resolutionArtifacts && (
+        <DisputeDiff
+          beforeVerdict={resolutionArtifacts.verdict}
+          afterVerdict={disputeResult.artifacts?.verdict}
+          beforeReasoning={resolutionArtifacts.reasoning_trace}
+          afterReasoning={disputeResult.artifacts?.reasoning_trace}
+        />
       )}
 
       {/* Execution Logs (from collect step) */}

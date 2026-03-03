@@ -1,0 +1,242 @@
+"use client";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+
+export type DisputeReasonCode =
+  | "REASONING_ERROR"
+  | "LOGIC_GAP"
+  | "EVIDENCE_MISREAD"
+  | "EVIDENCE_INSUFFICIENT"
+  | "OTHER";
+
+export type DisputeTargetArtifact =
+  | "evidence_bundle"
+  | "reasoning_trace"
+  | "verdict"
+  | "prompt_spec";
+
+export interface ResolutionArtifacts {
+  prompt_spec: any;
+  evidence_bundles: any[];
+  reasoning_trace: any;
+  verdict: any;
+  por_bundle?: any;
+}
+
+export interface DisputeResponse {
+  ok: true;
+  case_id?: string | null;
+  rerun_plan: string[];
+  artifacts: {
+    prompt_spec: any;
+    evidence_bundle: any;
+    reasoning_trace: any;
+    verdict: any;
+  };
+  diff?: any;
+}
+
+interface DisputePanelProps {
+  artifacts: ResolutionArtifacts;
+  onSubmit: (payload: any) => Promise<DisputeResponse>;
+  disabled?: boolean;
+  defaultCaseId?: string;
+  onResult?: (result: DisputeResponse, meta: { before: ResolutionArtifacts; evidenceBundleIndex: number }) => void;
+}
+
+export function DisputePanel({
+  artifacts,
+  onSubmit,
+  disabled = false,
+  defaultCaseId,
+  onResult,
+}: DisputePanelProps) {
+  const [reasonCode, setReasonCode] = useState<DisputeReasonCode>("REASONING_ERROR");
+  const [targetArtifact, setTargetArtifact] = useState<DisputeTargetArtifact>("verdict");
+  const [leafPath, setLeafPath] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+  const [caseId, setCaseId] = useState<string>(defaultCaseId ?? "");
+
+  const [bundleIndex, setBundleIndex] = useState<number>(0);
+
+  // Evidence patch (append items)
+  const [appendItemsJson, setAppendItemsJson] = useState<string>("[]");
+
+  const [submitting, setSubmitting] = useState(false);
+
+  const selectedEvidenceBundle = useMemo(() => {
+    const bundles = artifacts.evidence_bundles ?? [];
+    return bundles[Math.max(0, Math.min(bundleIndex, bundles.length - 1))] ?? null;
+  }, [artifacts.evidence_bundles, bundleIndex]);
+
+  async function handleSubmit() {
+    if (!selectedEvidenceBundle) {
+      toast.error("No evidence bundle available");
+      return;
+    }
+    if (!message.trim()) {
+      toast.error("Please enter a dispute message");
+      return;
+    }
+
+    let evidenceItemsAppend: any[] | null = null;
+    try {
+      const parsed = JSON.parse(appendItemsJson || "[]");
+      if (!Array.isArray(parsed)) {
+        throw new Error("append items JSON must be an array");
+      }
+      evidenceItemsAppend = parsed;
+    } catch (e) {
+      toast.error("Invalid evidence append JSON", {
+        description: e instanceof Error ? e.message : "Expected JSON array",
+      });
+      return;
+    }
+
+    const payload = {
+      mode: "reasoning_only",
+      case_id: caseId || null,
+      reason_code: reasonCode,
+      message: message.trim(),
+      target: {
+        artifact: targetArtifact,
+        leaf_path: leafPath.trim() || null,
+      },
+      prompt_spec: artifacts.prompt_spec,
+      evidence_bundle: selectedEvidenceBundle,
+      reasoning_trace: targetArtifact === "verdict" || targetArtifact === "reasoning_trace" ? artifacts.reasoning_trace : null,
+      patch: evidenceItemsAppend && evidenceItemsAppend.length > 0 ? { evidence_items_append: evidenceItemsAppend } : null,
+    };
+
+    setSubmitting(true);
+    try {
+      const res = await onSubmit(payload);
+      toast.success("Dispute submitted", {
+        description: `Reran: ${res.rerun_plan?.join(", ") || "(unknown)"}`,
+      });
+      onResult?.(res, { before: artifacts, evidenceBundleIndex: bundleIndex });
+    } catch (e) {
+      toast.error("Dispute failed", {
+        description: e instanceof Error ? e.message : "Unknown error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const bundleOptions = (artifacts.evidence_bundles ?? []).map((b, idx) => {
+    const label = b?.collector_name ? `${idx}: ${b.collector_name}` : `${idx}`;
+    return { idx, label };
+  });
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader>
+        <CardTitle className="text-sm">Dispute (Stateless)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Reason code</div>
+            <Select value={reasonCode} onValueChange={(v) => setReasonCode(v as DisputeReasonCode)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="REASONING_ERROR">REASONING_ERROR</SelectItem>
+                <SelectItem value="LOGIC_GAP">LOGIC_GAP</SelectItem>
+                <SelectItem value="EVIDENCE_MISREAD">EVIDENCE_MISREAD</SelectItem>
+                <SelectItem value="EVIDENCE_INSUFFICIENT">EVIDENCE_INSUFFICIENT</SelectItem>
+                <SelectItem value="OTHER">OTHER</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Target artifact</div>
+            <Select value={targetArtifact} onValueChange={(v) => setTargetArtifact(v as DisputeTargetArtifact)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="verdict">verdict (judge)</SelectItem>
+                <SelectItem value="reasoning_trace">reasoning_trace (audit)</SelectItem>
+                <SelectItem value="evidence_bundle">evidence_bundle</SelectItem>
+                <SelectItem value="prompt_spec">prompt_spec</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Case ID (optional)</div>
+            <Textarea value={caseId} onChange={(e) => setCaseId(e.target.value)} rows={1} placeholder="optional" />
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Leaf path (optional)</div>
+            <Textarea value={leafPath} onChange={(e) => setLeafPath(e.target.value)} rows={1} placeholder="e.g. items[3].extracted_fields" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Dispute message</div>
+          <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Explain why this is a dispute..." />
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Evidence bundle to send</div>
+          <Select value={String(bundleIndex)} onValueChange={(v) => setBundleIndex(parseInt(v, 10))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select bundle" />
+            </SelectTrigger>
+            <SelectContent>
+              {bundleOptions.map((o) => (
+                <SelectItem key={o.idx} value={String(o.idx)}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            MVP: protocol /dispute currently accepts a single evidence_bundle.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Patch: append evidence items (JSON array, optional)</div>
+          <Textarea
+            value={appendItemsJson}
+            onChange={(e) => setAppendItemsJson(e.target.value)}
+            rows={6}
+            placeholder='[{"evidence_id":"ev_new", ...}]'
+          />
+          <p className="text-xs text-muted-foreground">
+            If provided, these EvidenceItem objects will be appended to evidence_bundle.items before rerun.
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={disabled || submitting}
+            className={cn(
+              "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "bg-violet-500/20 text-violet-200 border border-violet-500/40 hover:bg-violet-500/25",
+              (disabled || submitting) && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            {submitting ? "Submitting..." : "Submit dispute"}
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
