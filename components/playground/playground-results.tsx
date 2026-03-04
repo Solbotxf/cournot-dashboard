@@ -2,7 +2,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from "react";
 import type { MarketCase, ParseResult, RunSummary, ExecutionLog } from "@/lib/types";
 import { HeroPending } from "@/components/detail/hero-pending";
 import { HeroResolved } from "@/components/detail/hero-resolved";
@@ -13,9 +12,10 @@ import { DeepTabs } from "@/components/detail/deep-tabs";
 import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
 import { EvidenceSection } from "@/components/detail/evidence-section";
 import { ExecutionLogsCard } from "@/components/detail/execution-logs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-import { DisputePanel, type ResolutionArtifacts, type DisputeResponse } from "@/components/playground/dispute-panel";
-import { DisputeDiff } from "@/components/playground/dispute-diff";
+import type { ResolutionArtifacts, DisputeResponse } from "@/components/playground/dispute-panel";
+import { PipelineStepsView } from "@/components/playground/pipeline-steps-view";
 
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
@@ -70,34 +70,17 @@ export function PlaygroundResults({
   const c = buildSyntheticCase(promptResult, resolveResult, userInput);
   const isResolved = resolveResult !== null;
 
-  const [disputeResult, setDisputeResult] = useState<DisputeResponse | null>(null);
+  const showDisputeTab =
+    isResolved && !!resolutionArtifacts && !!resolveResult && !!onSubmitDispute;
 
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  const resultsContent = (
+    <>
       {/* Hero section */}
       {isResolved ? <HeroResolved c={c} /> : <HeroPending c={c} />}
 
       {/* Evidence Section (resolve only) */}
       {isResolved && resolveResult.evidence_items && resolveResult.evidence_items.length > 0 && (
         <EvidenceSection result={resolveResult} toolPlan={promptResult.tool_plan} />
-      )}
-
-      {/* Dispute (playground only) */}
-      {isResolved && resolutionArtifacts && onSubmitDispute && (
-        <DisputePanel
-          artifacts={resolutionArtifacts}
-          onSubmit={onSubmitDispute}
-          onResult={(res) => setDisputeResult(res)}
-        />
-      )}
-
-      {isResolved && disputeResult && resolutionArtifacts && (
-        <DisputeDiff
-          beforeVerdict={resolutionArtifacts.verdict}
-          afterVerdict={disputeResult.artifacts?.verdict}
-          beforeReasoning={resolutionArtifacts.reasoning_trace}
-          afterReasoning={disputeResult.artifacts?.reasoning_trace}
-        />
       )}
 
       {/* Execution Logs (from collect step) */}
@@ -123,6 +106,40 @@ export function PlaygroundResults({
 
       {/* Deep Tabs */}
       <DeepTabs c={c} />
+    </>
+  );
+
+  if (!showDisputeTab) {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {resultsContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Tabs defaultValue="results">
+        <TabsList>
+          <TabsTrigger value="results">Results</TabsTrigger>
+          <TabsTrigger value="pipeline">Pipeline &amp; Dispute</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="results">
+          <div className="space-y-6">
+            {resultsContent}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="pipeline">
+          <PipelineStepsView
+            artifacts={resolutionArtifacts!}
+            resolveResult={resolveResult!}
+            promptResult={promptResult}
+            onSubmitDispute={onSubmitDispute!}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
