@@ -831,6 +831,10 @@ export default function PlaygroundPage() {
             if (!accessCode) throw new Error("Missing access code");
             return callApi(accessCode, "/dispute", payload, "POST");
           }}
+          onSubmitLLMDispute={async (payload) => {
+            if (!accessCode) throw new Error("Missing access code");
+            return callApi(accessCode, "/dispute/llm", payload, "POST");
+          }}
         />
       )}
     </div>

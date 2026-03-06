@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import type { ResolutionArtifacts, DisputeResponse } from "@/components/playground/dispute-panel";
 import { PipelineStepsView } from "@/components/playground/pipeline-steps-view";
+import { LLMDisputePanel } from "@/components/playground/llm-dispute-panel";
 
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
@@ -24,6 +25,7 @@ interface PlaygroundResultsProps {
   executionLogs?: ExecutionLog[];
   resolutionArtifacts?: ResolutionArtifacts | null;
   onSubmitDispute?: (payload: any) => Promise<DisputeResponse>;
+  onSubmitLLMDispute?: (payload: any) => Promise<DisputeResponse>;
 }
 
 function buildSyntheticCase(
@@ -63,6 +65,7 @@ export function PlaygroundResults({
   executionLogs = [],
   resolutionArtifacts = null,
   onSubmitDispute,
+  onSubmitLLMDispute,
 }: PlaygroundResultsProps) {
   // Debug: log resolveResult to console
   console.log("resolveResult:", JSON.stringify(resolveResult, null, 2));
@@ -122,7 +125,10 @@ export function PlaygroundResults({
       <Tabs defaultValue="results">
         <TabsList>
           <TabsTrigger value="results">Results</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline &amp; Dispute</TabsTrigger>
+          {onSubmitLLMDispute && (
+            <TabsTrigger value="dispute">Dispute</TabsTrigger>
+          )}
+          <TabsTrigger value="pipeline">Pipeline &amp; Advanced Dispute</TabsTrigger>
         </TabsList>
 
         <TabsContent value="results">
@@ -130,6 +136,15 @@ export function PlaygroundResults({
             {resultsContent}
           </div>
         </TabsContent>
+
+        {onSubmitLLMDispute && (
+          <TabsContent value="dispute">
+            <LLMDisputePanel
+              artifacts={resolutionArtifacts!}
+              onSubmit={onSubmitLLMDispute}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="pipeline">
           <PipelineStepsView
