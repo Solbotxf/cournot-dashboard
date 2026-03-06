@@ -167,7 +167,14 @@ const TIER_LABELS: Record<number, string> = {
   3: "Tier 3 — Low-confidence",
 };
 
-function EvidenceSourceCard({ source }: { source: EvidenceSource }) {
+/** Format the supports badge label with outcome context */
+function formatSupportsLabel(supports: string, outcome?: string): string {
+  if (supports === "N/A") return "N/A";
+  if (!outcome || outcome === "UNKNOWN") return supports === "YES" ? "Supports" : "Contradicts";
+  return supports === "YES" ? `Supports: ${outcome}` : `Contradicts: ${outcome}`;
+}
+
+function EvidenceSourceCard({ source, outcome }: { source: EvidenceSource; outcome?: string }) {
   return (
     <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -187,7 +194,7 @@ function EvidenceSourceCard({ source }: { source: EvidenceSource }) {
             variant="outline"
             className={cn("text-[10px] font-medium shrink-0", getSupportsColor(source.supports))}
           >
-            {source.supports}
+            {formatSupportsLabel(source.supports, outcome)}
           </Badge>
           {source.date_published && (
             <span className="text-[10px] text-muted-foreground">
@@ -209,7 +216,7 @@ function EvidenceSourceCard({ source }: { source: EvidenceSource }) {
       </div>
       {source.url && (
         <p className="text-[10px] text-muted-foreground font-mono break-all">
-          {source.url}
+          {source.domain_name ?? source.url}
         </p>
       )}
       {source.key_fact && (
@@ -221,7 +228,7 @@ function EvidenceSourceCard({ source }: { source: EvidenceSource }) {
   );
 }
 
-function EvidenceItemPanel({ item }: { item: EvidenceItem }) {
+function EvidenceItemPanel({ item, outcome }: { item: EvidenceItem; outcome?: string }) {
   const isSuccess = item.success !== false && !item.error;
   const evidenceSources = item.extracted_fields?.evidence_sources ?? [];
   const resolutionStatus = item.extracted_fields?.resolution_status;
@@ -313,7 +320,7 @@ function EvidenceItemPanel({ item }: { item: EvidenceItem }) {
             </div>
             <div className="space-y-2">
               {evidenceSources.map((source, idx) => (
-                <EvidenceSourceCard key={idx} source={source} />
+                <EvidenceSourceCard key={idx} source={source} outcome={outcome} />
               ))}
             </div>
           </div>
@@ -361,7 +368,7 @@ function EvidenceSnapshotPanel({ c }: { c: MarketCase }) {
           </p>
           <div className="space-y-3">
             {evidenceItems.map((item) => (
-              <EvidenceItemPanel key={item.evidence_id} item={item} />
+              <EvidenceItemPanel key={item.evidence_id} item={item} outcome={oracle?.outcome} />
             ))}
           </div>
         </div>

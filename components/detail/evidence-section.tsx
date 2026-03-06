@@ -83,6 +83,7 @@ export function EvidenceSection({
   result: RunSummary | null;
   toolPlan: ToolPlan | null;
 }) {
+  const outcome = result?.outcome;
   if (!result) return null;
 
   return (
@@ -164,7 +165,7 @@ export function EvidenceSection({
               </div>
               <div className="space-y-4">
                 {result.evidence_bundles.map((bundle) => (
-                  <EvidenceBundleCard key={bundle.bundle_id} bundle={bundle} />
+                  <EvidenceBundleCard key={bundle.bundle_id} bundle={bundle} outcome={outcome} />
                 ))}
               </div>
             </div>
@@ -181,7 +182,7 @@ export function EvidenceSection({
               </p>
               <div className="space-y-2">
                 {result.evidence_items.map((item) => (
-                  <EvidenceItemCard key={item.evidence_id} item={item} />
+                  <EvidenceItemCard key={item.evidence_id} item={item} outcome={outcome} />
                 ))}
               </div>
             </div>
@@ -217,9 +218,10 @@ const collectorColors: Record<string, string> = {
   CollectorHyDE: "text-sky-400 border-sky-500/30 bg-sky-500/10",
   CollectorHTTP: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
   CollectorMock: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
+  CollectorOpenSearch: "text-orange-400 border-orange-500/30 bg-orange-500/10",
 };
 
-function EvidenceBundleCard({ bundle }: { bundle: EvidenceBundle }) {
+function EvidenceBundleCard({ bundle, outcome }: { bundle: EvidenceBundle; outcome?: string }) {
   const [expanded, setExpanded] = useState(true);
   const colorClass = collectorColors[bundle.collector_name] ?? "text-muted-foreground border-border bg-muted/20";
 
@@ -270,7 +272,7 @@ function EvidenceBundleCard({ bundle }: { bundle: EvidenceBundle }) {
           ) : (
             <div className="space-y-2">
               {bundle.items.map((item, idx) => (
-                <EvidenceItemCard key={item.evidence_id || idx} item={item} />
+                <EvidenceItemCard key={item.evidence_id || idx} item={item} outcome={outcome} />
               ))}
             </div>
           )}
@@ -307,7 +309,14 @@ const TIER_LABELS: Record<number, string> = {
   3: "Tier 3 — Low-confidence",
 };
 
-function EvidenceItemCard({ item }: { item: EvidenceItem }) {
+/** Format the supports badge label with outcome context */
+function formatSupportsLabel(supports: string, outcome?: string): string {
+  if (supports === "N/A") return "N/A";
+  if (!outcome || outcome === "UNKNOWN") return supports === "YES" ? "Supports" : "Contradicts";
+  return supports === "YES" ? `Supports: ${outcome}` : `Contradicts: ${outcome}`;
+}
+
+function EvidenceItemCard({ item, outcome }: { item: EvidenceItem; outcome?: string }) {
   // Start expanded if there are evidence sources to show
   const evidenceSources = item.extracted_fields?.evidence_sources ?? [];
   const [expanded, setExpanded] = useState(evidenceSources.length > 0);
@@ -434,7 +443,7 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
                           variant="outline"
                           className={cn("text-[10px] font-medium shrink-0", getSupportsColor(source.supports))}
                         >
-                          {source.supports}
+                          {formatSupportsLabel(source.supports, outcome)}
                         </Badge>
                         {source.date_published && (
                           <span className="text-[10px] text-muted-foreground">
@@ -457,7 +466,7 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
                     </div>
                     {source.url && (
                       <p className="text-[10px] text-muted-foreground font-mono truncate">
-                        {source.url}
+                        {source.domain_name ?? source.url}
                       </p>
                     )}
                     {source.key_fact && (

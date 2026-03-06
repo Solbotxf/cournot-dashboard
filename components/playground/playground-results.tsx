@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { MarketCase, ParseResult, RunSummary, ExecutionLog } from "@/lib/types";
 import { HeroPending } from "@/components/detail/hero-pending";
 import { HeroResolved } from "@/components/detail/hero-resolved";
@@ -10,12 +12,18 @@ import { DeepTabs } from "@/components/detail/deep-tabs";
 import { DiscoveredSourcesCard } from "@/components/detail/discovered-sources";
 import { EvidenceSection } from "@/components/detail/evidence-section";
 import { ExecutionLogsCard } from "@/components/detail/execution-logs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+import type { ResolutionArtifacts, DisputeResponse } from "@/components/playground/dispute-panel";
+import { PipelineStepsView } from "@/components/playground/pipeline-steps-view";
 
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
   resolveResult: RunSummary | null;
   userInput: string;
   executionLogs?: ExecutionLog[];
+  resolutionArtifacts?: ResolutionArtifacts | null;
+  onSubmitDispute?: (payload: any) => Promise<DisputeResponse>;
 }
 
 function buildSyntheticCase(
@@ -53,6 +61,8 @@ export function PlaygroundResults({
   resolveResult,
   userInput,
   executionLogs = [],
+  resolutionArtifacts = null,
+  onSubmitDispute,
 }: PlaygroundResultsProps) {
   // Debug: log resolveResult to console
   console.log("resolveResult:", JSON.stringify(resolveResult, null, 2));
@@ -60,8 +70,11 @@ export function PlaygroundResults({
   const c = buildSyntheticCase(promptResult, resolveResult, userInput);
   const isResolved = resolveResult !== null;
 
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  const showDisputeTab =
+    isResolved && !!resolutionArtifacts && !!resolveResult && !!onSubmitDispute;
+
+  const resultsContent = (
+    <>
       {/* Hero section */}
       {isResolved ? <HeroResolved c={c} /> : <HeroPending c={c} />}
 
@@ -93,6 +106,40 @@ export function PlaygroundResults({
 
       {/* Deep Tabs */}
       <DeepTabs c={c} />
+    </>
+  );
+
+  if (!showDisputeTab) {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {resultsContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Tabs defaultValue="results">
+        <TabsList>
+          <TabsTrigger value="results">Results</TabsTrigger>
+          <TabsTrigger value="pipeline">Pipeline &amp; Dispute</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="results">
+          <div className="space-y-6">
+            {resultsContent}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="pipeline">
+          <PipelineStepsView
+            artifacts={resolutionArtifacts!}
+            resolveResult={resolveResult!}
+            promptResult={promptResult}
+            onSubmitDispute={onSubmitDispute!}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
