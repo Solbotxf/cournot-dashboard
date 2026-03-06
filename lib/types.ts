@@ -123,6 +123,7 @@ export interface Check {
 export interface EvidenceSource {
   source_id: string | null;
   url: string;
+  domain_name?: string;
   credibility_tier: number;
   key_fact: string;
   supports: "YES" | "NO" | "N/A";

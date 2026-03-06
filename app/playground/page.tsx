@@ -158,6 +158,7 @@ function mapEvidenceItems(bundle: any): EvidenceItem[] {
         evidence_sources: (item.extracted_fields.evidence_sources ?? []).map((es: any) => ({
           source_id: es.source_id ?? null,
           url: es.url ?? "",
+          domain_name: es.domain_name,
           credibility_tier: typeof es.credibility_tier === "number" ? es.credibility_tier : 3,
           key_fact: es.key_fact ?? "",
           supports: es.supports ?? "N/A",

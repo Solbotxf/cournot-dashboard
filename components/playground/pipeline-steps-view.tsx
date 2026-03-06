@@ -270,6 +270,7 @@ function StepBody({
         <EvidenceBody
           bundles={artifacts.evidence_bundles}
           summary={resolveResult?.evidence_summary}
+          outcome={resolveResult?.outcome}
         />
       );
     case "reasoning":
@@ -374,12 +375,21 @@ function PromptSpecBody({ spec }: { spec: any }) {
 
 // ─── Evidence Body ──────────────────────────────────────────────────────────
 
+/** Format the supports label with outcome context */
+function formatSupportsLabel(supports: string, outcome?: string): string {
+  if (supports === "N/A") return "N/A";
+  if (!outcome || outcome === "UNKNOWN") return supports === "YES" ? "Supports" : "Contradicts";
+  return supports === "YES" ? `Supports: ${outcome}` : `Contradicts: ${outcome}`;
+}
+
 function EvidenceBody({
   bundles,
   summary,
+  outcome,
 }: {
   bundles: any[];
   summary?: string;
+  outcome?: string;
 }) {
   const [expandedBundles, setExpandedBundles] = useState<
     Record<number, boolean>
@@ -680,7 +690,7 @@ function EvidenceBody({
                                                     rel="noopener noreferrer"
                                                     className="text-blue-400 hover:underline truncate block flex items-center gap-1"
                                                   >
-                                                    {src.url}
+                                                    {src.domain_name ?? src.url}
                                                     <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                                                   </a>
                                                 )}
@@ -690,21 +700,18 @@ function EvidenceBody({
                                                     {src.credibility_tier}
                                                   </span>
                                                   {src.supports && (
-                                                    <span>
-                                                      Supports:{" "}
-                                                      <span
-                                                        className={
-                                                          src.supports ===
-                                                          "YES"
-                                                            ? "text-emerald-400"
-                                                            : src.supports ===
-                                                                "NO"
-                                                              ? "text-red-400"
-                                                              : ""
-                                                        }
-                                                      >
-                                                        {src.supports}
-                                                      </span>
+                                                    <span
+                                                      className={
+                                                        src.supports ===
+                                                        "YES"
+                                                          ? "text-emerald-400"
+                                                          : src.supports ===
+                                                              "NO"
+                                                            ? "text-red-400"
+                                                            : ""
+                                                      }
+                                                    >
+                                                      {formatSupportsLabel(src.supports, outcome)}
                                                     </span>
                                                   )}
                                                   {src.date_published && (
