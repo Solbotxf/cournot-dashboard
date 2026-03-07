@@ -81,11 +81,11 @@ export function PlaygroundResults({
 
   const resultsContent = (
     <>
-      {/* Hero section */}
-      {isResolved ? <HeroResolved c={c} /> : <HeroPending c={c} />}
-
       {/* Market Validation (from /validate endpoint) */}
       {validationResult && <ValidationCard result={validationResult} />}
+
+      {/* Hero section */}
+      {isResolved ? <HeroResolved c={c} /> : <HeroPending c={c} />}
 
       {/* Evidence Section (resolve only) */}
       {isResolved && resolveResult.evidence_items && resolveResult.evidence_items.length > 0 && (
