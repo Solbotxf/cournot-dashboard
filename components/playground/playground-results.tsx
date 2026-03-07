@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ResolutionArtifacts, DisputeResponse } from "@/components/playground/dispute-panel";
 import { PipelineStepsView } from "@/components/playground/pipeline-steps-view";
 import { LLMDisputePanel } from "@/components/playground/llm-dispute-panel";
+import { ValidationCard, type ValidationResult } from "@/components/playground/validation-card";
 
 interface PlaygroundResultsProps {
   promptResult: ParseResult;
@@ -24,6 +25,7 @@ interface PlaygroundResultsProps {
   userInput: string;
   executionLogs?: ExecutionLog[];
   resolutionArtifacts?: ResolutionArtifacts | null;
+  validationResult?: ValidationResult | null;
   onSubmitDispute?: (payload: any) => Promise<DisputeResponse>;
   onSubmitLLMDispute?: (payload: any) => Promise<DisputeResponse>;
 }
@@ -64,6 +66,7 @@ export function PlaygroundResults({
   userInput,
   executionLogs = [],
   resolutionArtifacts = null,
+  validationResult = null,
   onSubmitDispute,
   onSubmitLLMDispute,
 }: PlaygroundResultsProps) {
@@ -80,6 +83,9 @@ export function PlaygroundResults({
     <>
       {/* Hero section */}
       {isResolved ? <HeroResolved c={c} /> : <HeroPending c={c} />}
+
+      {/* Market Validation (from /validate endpoint) */}
+      {validationResult && <ValidationCard result={validationResult} />}
 
       {/* Evidence Section (resolve only) */}
       {isResolved && resolveResult.evidence_items && resolveResult.evidence_items.length > 0 && (

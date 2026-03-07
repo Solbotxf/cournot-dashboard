@@ -376,6 +376,7 @@ export default function PlaygroundPage() {
   const [resolveResult, setResolveResult] = useState<RunSummary | null>(null);
   const [resolutionArtifacts, setResolutionArtifacts] = useState<any | null>(null);
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
+  const [validationResult, setValidationResult] = useState<any | null>(null);
 
   // Pipeline progress
   const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>(createInitialSteps());
@@ -394,6 +395,7 @@ export default function PlaygroundPage() {
     setResolveResult(null);
     setResolutionArtifacts(null);
     setExecutionLogs([]);
+    setValidationResult(null);
     setPipelineSteps(createInitialSteps());
     if (accessCode) trackPlaygroundReset(accessCode);
   }
@@ -451,8 +453,19 @@ export default function PlaygroundPage() {
     setResolveResult(null);
     setResolutionArtifacts(null);
     setExecutionLogs([]);
+    setValidationResult(null);
     setPipelineSteps(createInitialSteps());
     setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "running"));
+
+    // Fire /validate in parallel (best-effort, doesn't block prompt)
+    callApi(accessCode, "/validate", {
+      title: userInput.slice(0, 2000),
+      description: userInput,
+      ...(selectedProvider && { llm_provider: selectedProvider }),
+      ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
+    }, "POST")
+      .then((data) => { if (data?.ok) setValidationResult(data); })
+      .catch(() => { /* validation is best-effort; ignore errors */ });
 
     try {
       const data: ParseResult = await callApi(accessCode, "/step/prompt", {
@@ -827,6 +840,7 @@ export default function PlaygroundPage() {
           userInput={userInput}
           executionLogs={executionLogs}
           resolutionArtifacts={resolutionArtifacts}
+          validationResult={validationResult}
           onSubmitDispute={async (payload) => {
             if (!accessCode) throw new Error("Missing access code");
             return callApi(accessCode, "/dispute", payload, "POST");
