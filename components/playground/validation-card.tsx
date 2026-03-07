@@ -15,6 +15,7 @@ import {
   Gauge,
   Tag,
   Lightbulb,
+  Globe,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -29,6 +30,13 @@ interface CheckFailed {
 interface RiskFactor {
   factor: string;
   points: number;
+}
+
+interface SourceReachability {
+  url: string;
+  reachable: boolean;
+  status_code: number | null;
+  error: string | null;
 }
 
 export interface ValidationResult {
@@ -48,6 +56,7 @@ export interface ValidationResult {
     risk_factors: RiskFactor[];
     recommendation: string;
   };
+  source_reachability?: SourceReachability[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -96,7 +105,8 @@ function severityColor(severity: string) {
 export function ValidationCard({ result }: { result: ValidationResult }) {
   const [expanded, setExpanded] = useState(true);
 
-  const { classification, validation, resolvability } = result;
+  const { classification, validation, resolvability, source_reachability } = result;
+  const unreachableSources = (source_reachability ?? []).filter((s) => !s.reachable);
   const levelCfg = LEVEL_CONFIG[resolvability.level] ?? LEVEL_CONFIG.MEDIUM;
 
   const hasIssues = validation.checks_failed.length > 0;
@@ -259,6 +269,43 @@ export function ValidationCard({ result }: { result: ValidationResult }) {
                           {check.suggestion}
                         </p>
                       </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Source reachability */}
+          {unreachableSources.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Globe className="h-3 w-3 text-red-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Unreachable Sources ({unreachableSources.length})
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {unreachableSources.map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-lg border border-red-500/20 bg-red-500/5 p-2.5 space-y-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-3 w-3 text-red-400 shrink-0" />
+                      <span className="text-xs font-mono text-foreground/80 truncate">
+                        {src.url}
+                      </span>
+                      {src.status_code && (
+                        <Badge variant="outline" className="text-[10px] font-mono text-red-400 border-red-500/20 shrink-0">
+                          {src.status_code}
+                        </Badge>
+                      )}
+                    </div>
+                    {src.error && (
+                      <p className="text-[11px] text-red-300/80 ml-5">
+                        {src.error}
+                      </p>
                     )}
                   </div>
                 ))}

@@ -457,23 +457,27 @@ export default function PlaygroundPage() {
     setPipelineSteps(createInitialSteps());
     setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "running"));
 
-    // Fire /validate in parallel (best-effort, doesn't block prompt)
-    callApi(accessCode, "/validate", {
-      title: userInput.slice(0, 2000),
-      description: userInput,
-      ...(selectedProvider && { llm_provider: selectedProvider }),
-      ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
-    }, "POST")
-      .then((data) => { if (data?.ok) setValidationResult(data); })
-      .catch(() => { /* validation is best-effort; ignore errors */ });
-
     try {
-      const data: ParseResult = await callApi(accessCode, "/step/prompt", {
+      const data = await callApi(accessCode, "/validate", {
         user_input: userInput,
         ...(selectedProvider && { llm_provider: selectedProvider }),
         ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
-      setPromptResult(data);
+
+      // Extract validation result (classification, checks, resolvability, source_reachability)
+      if (data?.classification) {
+        setValidationResult(data);
+      }
+
+      // Extract prompt compilation result (prompt_spec, tool_plan) into ParseResult
+      const parseResult: ParseResult = {
+        ok: data?.ok ?? false,
+        prompt_spec: data?.prompt_spec ?? null,
+        tool_plan: data?.tool_plan ?? null,
+        error: (data?.errors ?? []).length > 0 ? data.errors.join("; ") : null,
+        metadata: data?.prompt_metadata ?? { compiler: "llm", strict_mode: true, question_type: "unknown" },
+      };
+      setPromptResult(parseResult);
       setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "completed"));
       trackPlaygroundStepComplete(accessCode, "prompt", true);
       setPhase("prompted");
