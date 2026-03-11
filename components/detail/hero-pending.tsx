@@ -3,10 +3,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { MarketCase } from "@/lib/types";
-import { cn, renderText, normalizeRules, normalizeSources } from "@/lib/utils";
+import { cn, renderText } from "@/lib/utils";
 import {
   Brain,
-  AlertTriangle,
   CheckCircle2,
   XCircle,
   Clock,
@@ -15,17 +14,6 @@ import {
   Info,
 } from "lucide-react";
 
-function getAmbiguityLevel(spec: MarketCase["parse_result"]["prompt_spec"]) {
-  if (!spec) return { level: "unknown", color: "text-slate-400", bg: "bg-slate-500/10 border-slate-500/20" };
-  const rules = normalizeRules(spec.market.resolution_rules).length;
-  const sources = normalizeSources(spec.market.allowed_sources).length;
-  const forbidden = spec.forbidden_behaviors.length;
-  // Simple heuristic: more rules + sources + forbidden = lower ambiguity
-  const score = rules + sources + forbidden;
-  if (score >= 8) return { level: "Low", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" };
-  if (score >= 5) return { level: "Medium", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" };
-  return { level: "High", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" };
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
@@ -41,7 +29,6 @@ function formatDate(iso: string) {
 export function HeroPending({ c }: { c: MarketCase }) {
   const spec = c.parse_result.prompt_spec;
   const plan = c.parse_result.tool_plan;
-  const ambiguity = getAmbiguityLevel(spec);
   const parseOk = c.parse_result.ok;
 
   return (
@@ -79,17 +66,6 @@ export function HeroPending({ c }: { c: MarketCase }) {
                       {renderText(spec.prediction_semantics)}
                     </Badge>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground/70">Timezone</p>
-                    <p className="text-xs font-mono text-foreground/80">{spec.market.timezone}</p>
-                  </div>
-                </div>
-                {/* Ambiguity score */}
-                <div className={cn("rounded-lg border px-3 py-2 flex items-center gap-2", ambiguity.bg)}>
-                  <AlertTriangle className={cn("h-3 w-3 shrink-0", ambiguity.color)} />
-                  <p className={cn("text-[11px] font-medium", ambiguity.color)}>
-                    Ambiguity: {ambiguity.level}
-                  </p>
                 </div>
                 {/* Assumptions */}
                 {spec.extra &&
