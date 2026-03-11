@@ -30,6 +30,8 @@ export interface ResolutionArtifacts {
   reasoning_trace: any;
   verdict: any;
   por_bundle?: any;
+  quality_scorecard?: any;
+  temporal_constraint?: any;
 }
 
 export interface DisputeResponse {

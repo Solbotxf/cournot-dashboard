@@ -123,16 +123,23 @@ export interface Check {
 export interface EvidenceSource {
   source_id: string | null;
   url: string;
+  uri?: string;
+  title?: string;
+  domain?: string;
   domain_name?: string;
+  domain_match?: boolean;
   credibility_tier: number;
   key_fact: string;
+  grounding_text?: string;
   supports: "YES" | "NO" | "N/A";
   date_published: string | null;
 }
 
 export interface ExtractedFields {
+  outcome?: "Yes" | "No" | "Unresolved";
+  reason?: string;
   confidence_score?: number;
-  resolution_status?: string;
+  resolution_status?: "RESOLVED" | "UNRESOLVED" | string;
   evidence_sources?: EvidenceSource[];
   // Collector-specific extras
   hypothesis_match?: string;
@@ -140,6 +147,10 @@ export interface ExtractedFields {
   hypothetical_document?: string;
   conflicts?: string[];
   missing_info?: string[];
+  grounding_search_queries?: string[];
+  grounding_source_count?: number;
+  pass_used?: string;
+  data_source_domains_required?: string[];
 }
 
 export interface EvidenceItem {
@@ -255,6 +266,44 @@ export interface RunSummary {
   llm_review?: LLMReview;
   execution_steps?: ExecutionStep[];
   discovered_sources?: DiscoveredSource[];
+}
+
+// ─── Temporal Constraint ─────────────────────────────────────────────────────
+
+export interface TemporalConstraint {
+  enabled: true;
+  event_time: string;   // ISO 8601 UTC
+  reason: string;
+}
+
+// ─── Quality Check ──────────────────────────────────────────────────────────
+
+export interface QualityRetryHints {
+  search_queries?: string[];
+  required_domains?: string[];
+  skip_domains?: string[];
+  data_type_hint?: string | null;
+  focus_requirements?: string[];
+  collector_guidance?: string;
+}
+
+export interface QualityScorecard {
+  source_match: "FULL" | "PARTIAL" | "NONE";
+  data_type_match: boolean;
+  collector_agreement: "AGREE" | "DISAGREE" | "SINGLE";
+  requirements_coverage: number;
+  quality_level: "HIGH" | "MEDIUM" | "LOW";
+  quality_flags: string[];
+  meets_threshold: boolean;
+  recommendations: string[];
+  retry_hints: QualityRetryHints;
+}
+
+export interface QualityCheckResponse {
+  ok: boolean;
+  scorecard: QualityScorecard | null;
+  meets_threshold: boolean;
+  errors: string[];
 }
 
 // ─── Market Case (merged view) ──────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Sparkles,
   Search,
+  ShieldCheck,
   Brain,
   Scale,
   Package,
@@ -18,6 +19,7 @@ export interface PipelineStep {
   id: string;
   name: string;
   description: string;
+  completedDescription?: string;
   status: StepStatus;
   icon: typeof Sparkles;
 }
@@ -34,6 +36,12 @@ const defaultSteps: Omit<PipelineStep, "status">[] = [
     name: "Collect",
     description: "Gathering evidence from sources",
     icon: Search,
+  },
+  {
+    id: "quality_check",
+    name: "Quality Check",
+    description: "Evaluating evidence quality",
+    icon: ShieldCheck,
   },
   {
     id: "audit",
@@ -81,18 +89,39 @@ interface PipelineProgressProps {
 }
 
 export function PipelineProgress({ steps }: PipelineProgressProps) {
+  const completedCount = steps.filter((s) => s.status === "completed").length;
+  const allDone = completedCount === steps.length;
+  const runningStep = steps.find((s) => s.status === "running");
+
   return (
     <div className="rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-sm font-semibold">Oracle Pipeline</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Multi-step resolution in progress
+            {allDone
+              ? "Resolution complete"
+              : runningStep
+              ? `Step ${steps.indexOf(runningStep) + 1}/${steps.length}: ${runningStep.name}`
+              : "Multi-step resolution in progress"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
-          <span className="text-xs text-muted-foreground">Processing...</span>
+          {allDone ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <span className="text-xs text-emerald-400 font-medium">
+                {completedCount}/{steps.length} completed
+              </span>
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
+              <span className="text-xs text-muted-foreground">
+                {completedCount}/{steps.length} completed
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -152,10 +181,14 @@ export function PipelineProgress({ steps }: PipelineProgressProps) {
                     "text-xs mt-0.5",
                     step.status === "running"
                       ? "text-violet-300/70"
+                      : step.status === "completed" && step.completedDescription
+                      ? "text-emerald-400/70"
                       : "text-muted-foreground"
                   )}
                 >
-                  {step.description}
+                  {step.status === "completed" && step.completedDescription
+                    ? step.completedDescription
+                    : step.description}
                 </p>
               </div>
 
@@ -170,7 +203,7 @@ export function PipelineProgress({ steps }: PipelineProgressProps) {
                     : "text-muted-foreground/50"
                 )}
               >
-                {index + 1}/5
+                {index + 1}/{steps.length}
               </div>
             </div>
           ))}
@@ -187,7 +220,12 @@ export function createInitialSteps(): PipelineStep[] {
 export function updateStepStatus(
   steps: PipelineStep[],
   stepId: string,
-  status: StepStatus
+  status: StepStatus,
+  completedDescription?: string
 ): PipelineStep[] {
-  return steps.map((s) => (s.id === stepId ? { ...s, status } : s));
+  return steps.map((s) =>
+    s.id === stepId
+      ? { ...s, status, ...(completedDescription && { completedDescription }) }
+      : s
+  );
 }

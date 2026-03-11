@@ -20,7 +20,10 @@ import {
   AlertTriangle,
   Hash,
   ChevronRight,
-
+  ShieldCheck,
+  FileCheck,
+  MessageSquareWarning,
+  Zap,
 } from "lucide-react";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -317,9 +320,14 @@ const TOC_ITEMS = [
   { id: "authentication", label: "Authentication" },
   { id: "step-prompt", label: "Step 1 - Prompt", indent: true },
   { id: "step-collect", label: "Step 2 - Collect", indent: true },
+  { id: "step-quality-check", label: "Step 2.5 - Quality Check", indent: true },
   { id: "step-audit", label: "Step 3 - Audit", indent: true },
   { id: "step-judge", label: "Step 4 - Judge", indent: true },
   { id: "step-bundle", label: "Step 5 - Bundle", indent: true },
+  { id: "step-resolve", label: "Resolve (all-in-one)", indent: true },
+  { id: "validate", label: "Validate Market" },
+  { id: "dispute", label: "Dispute" },
+  { id: "dispute-llm", label: "Dispute (LLM)" },
   { id: "capabilities", label: "Capabilities" },
   { id: "collectors", label: "Collectors & Providers" },
   { id: "errors", label: "Error Handling" },
@@ -527,6 +535,7 @@ export default function DeveloperPage() {
               {[
                 { num: 1, name: "Prompt", icon: Terminal, id: "step-prompt" },
                 { num: 2, name: "Collect", icon: Search, id: "step-collect" },
+                { num: "2.5", name: "Quality", icon: ShieldCheck, id: "step-quality-check" },
                 { num: 3, name: "Audit", icon: Scale, id: "step-audit" },
                 { num: 4, name: "Judge", icon: Gavel, id: "step-judge" },
                 { num: 5, name: "Bundle", icon: PackageCheck, id: "step-bundle" },
@@ -569,9 +578,14 @@ export default function DeveloperPage() {
                   {[
                     { method: "POST", path: "/step/prompt", desc: "Compile question into prompt spec + tool plan", anchor: "step-prompt" },
                     { method: "POST", path: "/step/collect", desc: "Gather evidence from external sources", anchor: "step-collect" },
+                    { method: "POST", path: "/step/quality_check", desc: "Evaluate evidence quality, produce retry hints", anchor: "step-quality-check" },
                     { method: "POST", path: "/step/audit", desc: "Produce reasoning trace from evidence", anchor: "step-audit" },
                     { method: "POST", path: "/step/judge", desc: "Determine outcome and confidence", anchor: "step-judge" },
                     { method: "POST", path: "/step/bundle", desc: "Build cryptographic PoR bundle", anchor: "step-bundle" },
+                    { method: "POST", path: "/step/resolve", desc: "Run full pipeline in a single call", anchor: "step-resolve" },
+                    { method: "POST", path: "/validate", desc: "Validate and compile a market query", anchor: "validate" },
+                    { method: "POST", path: "/dispute", desc: "Structured dispute-driven rerun", anchor: "dispute" },
+                    { method: "POST", path: "/dispute/llm", desc: "LLM-assisted dispute from 3 user inputs", anchor: "dispute-llm" },
                     { method: "GET", path: "/capabilities", desc: "List available providers, collectors, and steps", anchor: "capabilities" },
                   ].map((row) => (
                     <tr key={row.path} className="hover:bg-accent/30 transition-colors">
@@ -611,10 +625,12 @@ export default function DeveloperPage() {
           title="Prompt Compilation"
           stepNumber={1}
           icon={Terminal}
-          description="Compiles a natural-language market question into a structured prompt specification and tool plan. This is the entry point of the pipeline. The prompt spec defines the resolution rules, allowed sources, and prediction semantics. The tool plan specifies which data requirements need to be fulfilled and from which sources."
+          description="Compiles a natural-language market question into a structured prompt specification and tool plan. This is the entry point of the pipeline. The prompt spec defines the resolution rules, allowed sources, and prediction semantics. The tool plan specifies which data requirements need to be fulfilled and from which sources. When the query involves a scheduled event, the LLM compiler auto-detects a temporal constraint and includes it in prompt_spec.extra.temporal_constraint — extract and pass this to /step/audit and /step/judge."
           requestFields={[
             { key: "user_input", type: "string", description: "The natural-language market question to resolve", required: true },
             { key: "strict_mode", type: "boolean", description: "When true, only official sources are allowed. Defaults to false.", required: false },
+            { key: "llm_provider", type: "string", description: "LLM provider override (e.g. \"openai\", \"anthropic\", \"google\")", required: false },
+            { key: "llm_model", type: "string", description: "LLM model override (e.g. \"gpt-4o\")", required: false },
           ]}
           requestExample={`{
   "user_input": "Will Bitcoin exceed 100k by March 2025?",
@@ -633,6 +649,7 @@ export default function DeveloperPage() {
             { key: "ok", type: "boolean", description: "Whether the step succeeded" },
             { key: "market_id", type: "string", description: "Generated market identifier, e.g. \"mk_3f5b9c7e\"" },
             { key: "prompt_spec", type: "PromptSpec", description: "Structured specification including market definition, resolution rules, and data requirements" },
+            { key: "prompt_spec.extra.temporal_constraint", type: "object | null", description: "Auto-detected temporal constraint with { enabled, event_time, reason }. Extract and pass to /step/audit and /step/judge." },
             { key: "tool_plan", type: "ToolPlan", description: "Execution plan referencing requirements and sources to query" },
             { key: "metadata", type: "object", description: "Compiler info, strict_mode flag, requirement count" },
             { key: "error", type: "string | null", description: "Error message if compilation failed" },
@@ -702,6 +719,11 @@ export default function DeveloperPage() {
   extra {
     strict_mode, compiler, assumptions[]
     confidence_policy { min_confidence_for_yesno, default_confidence }
+    temporal_constraint? {       // auto-detected for scheduled events
+      enabled        true
+      event_time     ISO 8601 UTC
+      reason         string
+    }
   }
 }
 
@@ -724,12 +746,15 @@ ToolPlan {
           title="Evidence Collection"
           stepNumber={2}
           icon={Search}
-          description="Runs the configured collector agents to gather evidence bundles from external sources. Each collector queries different source types (web search, APIs, databases) and returns structured evidence items with provenance metadata. Multiple collectors can run in parallel."
+          description="Runs the configured collector agents to gather evidence bundles from external sources. Each collector queries different source types (web search, APIs, databases) and returns structured evidence items with provenance metadata. Multiple collectors can run in parallel. When retrying after a quality check failure, pass the quality_feedback field with retry hints to adjust search strategy."
           requestFields={[
             { key: "prompt_spec", type: "PromptSpec", description: "Structured prompt specification from Step 1", required: true },
             { key: "tool_plan", type: "ToolPlan", description: "Execution plan from Step 1", required: true },
             { key: "collectors", type: "string[]", description: "List of collector names to run. See /capabilities for available collectors.", required: false },
             { key: "include_raw_content", type: "boolean", description: "Whether to include raw fetched content in the response. Defaults to false.", required: false },
+            { key: "quality_feedback", type: "object", description: "Retry hints from /step/quality_check scorecard.retry_hints. Adjusts search queries, domains, and focus areas.", required: false },
+            { key: "llm_provider", type: "string", description: "LLM provider override", required: false },
+            { key: "llm_model", type: "string", description: "LLM model override", required: false },
           ]}
           requestExample={`{
   "prompt_spec": { ... },
@@ -819,6 +844,70 @@ ExecutionLog {
           ]}
         />
 
+        {/* ─── Step 2.5: Quality Check ──────────────────────────────────── */}
+        <EndpointSection
+          id="step-quality-check"
+          method="POST"
+          path="/step/quality_check"
+          title="Evidence Quality Check"
+          icon={ShieldCheck}
+          description="Evaluates collected evidence quality before proceeding to audit. Returns a scorecard with quality signals and machine-readable retry hints. If quality is below threshold, retry /step/collect with the retry_hints as quality_feedback. This step is optional but recommended — if you skip it, audit and judge still work."
+          requestFields={[
+            { key: "prompt_spec", type: "PromptSpec", description: "Compiled prompt specification from Step 1", required: true },
+            { key: "evidence_bundles", type: "EvidenceBundle[]", description: "Evidence bundles from Step 2", required: true },
+          ]}
+          requestExample={`{
+  "prompt_spec":      { ... },
+  "evidence_bundles": [ ... ]
+}`}
+          responseFields={[
+            { key: "ok", type: "boolean", description: "Whether the quality check ran successfully" },
+            { key: "scorecard", type: "QualityScorecard | null", description: "Quality scorecard with metrics, flags, and retry hints" },
+            { key: "scorecard.source_match", type: "\"FULL\" | \"PARTIAL\" | \"NONE\"", description: "How well evidence sources match required domains" },
+            { key: "scorecard.data_type_match", type: "boolean", description: "Whether evidence data types match what was requested" },
+            { key: "scorecard.collector_agreement", type: "\"AGREE\" | \"DISAGREE\" | \"SINGLE\"", description: "Whether multiple collectors agree on the outcome" },
+            { key: "scorecard.requirements_coverage", type: "number (0-1)", description: "Fraction of data requirements covered by evidence" },
+            { key: "scorecard.quality_level", type: "\"HIGH\" | \"MEDIUM\" | \"LOW\"", description: "Overall quality assessment" },
+            { key: "scorecard.quality_flags", type: "string[]", description: "Issue flags like \"source_mismatch\", \"requirements_gap\"" },
+            { key: "scorecard.meets_threshold", type: "boolean", description: "true = proceed to audit, false = consider retrying" },
+            { key: "scorecard.recommendations", type: "string[]", description: "Human-readable improvement suggestions" },
+            { key: "scorecard.retry_hints", type: "object", description: "Machine-readable hints to pass as quality_feedback to /step/collect" },
+            { key: "meets_threshold", type: "boolean", description: "Top-level convenience duplicate of scorecard.meets_threshold" },
+            { key: "errors", type: "string[]", description: "Non-fatal errors" },
+          ]}
+          responseExample={`{
+  "ok": true,
+  "scorecard": {
+    "source_match": "PARTIAL",
+    "data_type_match": true,
+    "collector_agreement": "AGREE",
+    "requirements_coverage": 0.65,
+    "quality_level": "MEDIUM",
+    "quality_flags": ["source_mismatch"],
+    "meets_threshold": false,
+    "recommendations": [
+      "Try broader search terms for requirement req_001"
+    ],
+    "retry_hints": {
+      "search_queries": ["bitcoin price 2025 prediction"],
+      "required_domains": ["coinmarketcap.com"],
+      "skip_domains": [],
+      "data_type_hint": null,
+      "focus_requirements": ["req_001"],
+      "collector_guidance": "Focus on price data sources"
+    }
+  },
+  "meets_threshold": false,
+  "errors": []
+}`}
+          notes={[
+            "Call after /step/collect. If meets_threshold is false and retry_hints is non-empty, retry /step/collect with quality_feedback set to retry_hints.",
+            "Retry up to 2 times. Merge new evidence bundles with existing ones.",
+            "Pass the scorecard to /step/audit and /step/judge as quality_scorecard so they are aware of evidence quality issues.",
+            "This step is optional — audit and judge work without it, you just lose the quality feedback loop.",
+          ]}
+        />
+
         {/* ─── Step 3: Audit ──────────────────────────────────────────────── */}
         <EndpointSection
           id="step-audit"
@@ -827,14 +916,24 @@ ExecutionLog {
           title="Evidence Audit"
           stepNumber={3}
           icon={Scale}
-          description="Analyzes collected evidence against the prompt specification to produce a structured reasoning trace. The audit step evaluates each piece of evidence, identifies conflicts, builds reasoning chains, and produces a preliminary outcome assessment with confidence score."
+          description="Analyzes collected evidence against the prompt specification to produce a structured reasoning trace. The audit step evaluates each piece of evidence, identifies conflicts, builds reasoning chains, and produces a preliminary outcome assessment with confidence score. When temporal_constraint is provided, the auditor computes temporal status (FUTURE/ACTIVE/PAST) and may force INVALID for future events."
           requestFields={[
             { key: "prompt_spec", type: "PromptSpec", description: "Structured prompt specification from Step 1", required: true },
             { key: "evidence_bundles", type: "EvidenceBundle[]", description: "Evidence bundles from Step 2", required: true },
+            { key: "quality_scorecard", type: "object | null", description: "Quality scorecard from /step/quality_check. Informs auditor about evidence quality issues.", required: false },
+            { key: "temporal_constraint", type: "object | null", description: "From prompt_spec.extra.temporal_constraint. Enables temporal guard (FUTURE/ACTIVE/PAST status).", required: false },
+            { key: "llm_provider", type: "string", description: "LLM provider override", required: false },
+            { key: "llm_model", type: "string", description: "LLM model override", required: false },
           ]}
           requestExample={`{
-  "prompt_spec":      { ... },
-  "evidence_bundles": [ ... ]
+  "prompt_spec":          { ... },
+  "evidence_bundles":     [ ... ],
+  "quality_scorecard":    { ... },
+  "temporal_constraint":  {
+    "enabled": true,
+    "event_time": "2027-05-31T00:00:00Z",
+    "reason": "Champions League final"
+  }
 }`}
           responseFields={[
             { key: "ok", type: "boolean", description: "Whether audit succeeded" },
@@ -906,16 +1005,26 @@ ExecutionLog {
           title="Judgment"
           stepNumber={4}
           icon={Gavel}
-          description="Applies resolution rules to the evidence and reasoning trace to produce a final verdict. The judge evaluates the reasoning validity, applies confidence adjustments, and determines the definitive outcome. Includes an independent LLM review of the reasoning process."
+          description="Applies resolution rules to the evidence and reasoning trace to produce a final verdict. The judge evaluates the reasoning validity, applies confidence adjustments, and determines the definitive outcome. Includes an independent LLM review of the reasoning process. When temporal_constraint is provided, computes temporal status and may force INVALID for future or active events."
           requestFields={[
             { key: "prompt_spec", type: "PromptSpec", description: "Structured prompt specification from Step 1", required: true },
             { key: "evidence_bundles", type: "EvidenceBundle[]", description: "Evidence bundles from Step 2", required: true },
             { key: "reasoning_trace", type: "ReasoningTrace", description: "Reasoning trace from Step 3", required: true },
+            { key: "quality_scorecard", type: "object | null", description: "Quality scorecard from /step/quality_check. Informs judge about evidence quality issues.", required: false },
+            { key: "temporal_constraint", type: "object | null", description: "From prompt_spec.extra.temporal_constraint. Enables temporal guard (FUTURE/ACTIVE/PAST status).", required: false },
+            { key: "llm_provider", type: "string", description: "LLM provider override", required: false },
+            { key: "llm_model", type: "string", description: "LLM model override", required: false },
           ]}
           requestExample={`{
-  "prompt_spec":      { ... },
-  "evidence_bundles": [ ... ],
-  "reasoning_trace":  { ... }
+  "prompt_spec":         { ... },
+  "evidence_bundles":    [ ... ],
+  "reasoning_trace":     { ... },
+  "quality_scorecard":   { ... },
+  "temporal_constraint": {
+    "enabled": true,
+    "event_time": "2027-05-31T00:00:00Z",
+    "reason": "Champions League final"
+  }
 }`}
           responseFields={[
             { key: "ok", type: "boolean", description: "Whether judgment succeeded" },
@@ -976,10 +1085,11 @@ ExecutionLog {
   }
 }`}
           notes={[
-            "The outcome is one of: \"YES\", \"NO\", or \"INVALID\" (when evidence is insufficient).",
+            "The outcome is one of: \"YES\", \"NO\", or \"INVALID\" (when evidence is insufficient or temporal guard triggers).",
             "Confidence ranges from 0 to 1. Values below the configured min_confidence_for_yesno threshold result in \"INVALID\".",
             "The verdict includes Merkle root hashes for cryptographic verification of the full reasoning chain.",
             "The llm_review provides an independent assessment of whether the reasoning is sound.",
+            "Temporal status: FUTURE (event_time > now) → INVALID; ACTIVE (now - event_time < 24h) → INVALID unless concluded; PAST (≥24h) → normal resolution.",
           ]}
         />
 
@@ -1063,6 +1173,242 @@ roots {
             "The por_root is the master Merkle root that covers all other roots. Use it for single-hash verification.",
             "Individual roots (prompt_spec_hash, evidence_root, reasoning_root) enable partial verification of specific pipeline stages.",
             "tee_attestation and signatures are reserved for future TEE (Trusted Execution Environment) support.",
+          ]}
+        />
+
+        {/* ─── Resolve (all-in-one) ──────────────────────────────────────── */}
+        <EndpointSection
+          id="step-resolve"
+          method="POST"
+          path="/step/resolve"
+          title="Resolve (All-in-One)"
+          icon={Zap}
+          description="Run the full resolution pipeline (collect → quality check → audit → judge → PoR bundle) in a single call. Quality check and temporal constraint are handled automatically — temporal_constraint is extracted from prompt_spec.extra and quality check runs with a retry loop by default."
+          requestFields={[
+            { key: "prompt_spec", type: "PromptSpec", description: "Compiled prompt specification from /step/prompt", required: true },
+            { key: "tool_plan", type: "ToolPlan", description: "Tool execution plan from /step/prompt", required: true },
+            { key: "collectors", type: "string[]", description: "Which collectors to use (default: [\"CollectorWebPageReader\"])", required: false },
+            { key: "execution_mode", type: "string", description: "\"production\", \"development\" (default), or \"test\"", required: false },
+            { key: "enable_quality_check", type: "boolean", description: "Run quality check with retry loop after collection (default: true)", required: false },
+            { key: "max_quality_retries", type: "integer", description: "Max quality check retry iterations, 0–5 (default: 2)", required: false },
+            { key: "llm_provider", type: "string", description: "LLM provider override", required: false },
+            { key: "llm_model", type: "string", description: "LLM model override", required: false },
+          ]}
+          requestExample={`{
+  "prompt_spec": { ... },
+  "tool_plan":   { ... },
+  "collectors":  ["CollectorOpenSearch"],
+  "execution_mode": "development",
+  "enable_quality_check": true,
+  "max_quality_retries": 2
+}`}
+          responseFields={[
+            { key: "ok", type: "boolean", description: "Whether the full pipeline succeeded" },
+            { key: "outcome", type: "string", description: "\"YES\", \"NO\", or \"INVALID\"" },
+            { key: "confidence", type: "number", description: "Final confidence score 0–1" },
+            { key: "por_root", type: "string", description: "PoR Merkle root hash" },
+            { key: "artifacts", type: "object", description: "All pipeline artifacts (evidence_bundles, reasoning_trace, verdict, por_bundle)" },
+            { key: "errors", type: "string[]", description: "Non-fatal errors" },
+          ]}
+          responseExample={`{
+  "ok": true,
+  "outcome": "YES",
+  "confidence": 0.85,
+  "por_root": "0xba9ec9c2...",
+  "artifacts": {
+    "evidence_bundles": [ ... ],
+    "reasoning_trace": { ... },
+    "verdict": { ... },
+    "por_bundle": { ... }
+  },
+  "errors": []
+}`}
+          notes={[
+            "No extra fields needed for quality check or temporal constraint — both are fully automatic.",
+            "Set enable_quality_check: false to skip the quality check loop and go directly to audit.",
+            "This is equivalent to calling prompt → collect → quality_check → audit → judge → bundle individually.",
+          ]}
+        />
+
+        {/* ─── Validate ────────────────────────────────────────────────────── */}
+        <EndpointSection
+          id="validate"
+          method="POST"
+          path="/validate"
+          title="Validate Market"
+          icon={FileCheck}
+          description="Validate and compile a market query in a single call. Runs LLM validation (classify market type, validate fields, assess resolvability), prompt compilation (PromptSpec + ToolPlan), and source reachability probes in parallel. The response includes both the validation result and the compiled prompt_spec/tool_plan ready for /step/collect."
+          requestFields={[
+            { key: "user_input", type: "string", description: "The prediction market query to validate and compile (1–8000 chars)", required: true },
+            { key: "strict_mode", type: "boolean", description: "Enable strict mode for deterministic hashing (default: true)", required: false },
+            { key: "llm_provider", type: "string", description: "LLM provider override", required: false },
+            { key: "llm_model", type: "string", description: "LLM model override", required: false },
+          ]}
+          requestExample={`{
+  "user_input": "Highest temperature in Buenos Aires on March 1?",
+  "strict_mode": true
+}`}
+          responseFields={[
+            { key: "ok", type: "boolean", description: "Whether validation and compilation succeeded" },
+            { key: "classification", type: "object", description: "Market type classification with confidence and rationale" },
+            { key: "classification.market_type", type: "string", description: "Detected type: FINANCIAL_PRICE, TEMPERATURE, SPORTS_MATCH, BINARY_EVENT, etc." },
+            { key: "validation", type: "object", description: "Checks passed/failed with severity and suggestions" },
+            { key: "resolvability", type: "object", description: "Score (0–100), level (LOW/MEDIUM/HIGH/VERY_HIGH), risk factors" },
+            { key: "source_reachability", type: "array", description: "URL probe results — reachable, status_code, errors" },
+            { key: "prompt_spec", type: "PromptSpec", description: "Compiled prompt specification (pass to /step/collect)" },
+            { key: "tool_plan", type: "ToolPlan", description: "Tool execution plan (pass to /step/collect)" },
+            { key: "errors", type: "string[]", description: "Non-fatal errors" },
+          ]}
+          responseExample={`{
+  "ok": true,
+  "classification": {
+    "market_type": "TEMPERATURE",
+    "confidence": 0.95,
+    "detection_rationale": "Contains 'temperature', city name, and date"
+  },
+  "validation": {
+    "checks_passed": ["U-02", "U-03", "TEMP-01"],
+    "checks_failed": [
+      {
+        "check_id": "TEMP-04",
+        "severity": "warning",
+        "message": "No fallback data source specified.",
+        "suggestion": "Add an alternative source if Wunderground is unavailable."
+      }
+    ]
+  },
+  "resolvability": {
+    "score": 35,
+    "level": "MEDIUM",
+    "risk_factors": [
+      { "factor": "Single data source with no fallback", "points": 30 }
+    ]
+  },
+  "source_reachability": [
+    { "url": "https://www.wunderground.com", "reachable": true, "status_code": 200, "error": null }
+  ],
+  "prompt_spec": { "..." : "..." },
+  "tool_plan": { "..." : "..." },
+  "errors": []
+}`}
+          notes={[
+            "Risk levels: LOW (0–15) = auto-resolution OK, MEDIUM (16–35) = may have difficulty, HIGH (36–55) = high failure risk, VERY_HIGH (56+) = unlikely to resolve.",
+            "The prompt_spec and tool_plan can be passed directly to /step/collect or /step/resolve.",
+            "Source reachability detects Cloudflare blocks, paywalls, and timeouts on data source URLs.",
+          ]}
+        />
+
+        {/* ─── Dispute ─────────────────────────────────────────────────────── */}
+        <EndpointSection
+          id="dispute"
+          method="POST"
+          path="/dispute"
+          title="Dispute (Structured)"
+          icon={MessageSquareWarning}
+          description="Stateless dispute-driven rerun of audit/judge steps. Provide all context artifacts and a structured dispute request. In reasoning_only mode, reruns audit and judge with existing evidence. In full_rerun mode, re-collects evidence first. Returns updated artifacts with a before/after diff."
+          requestFields={[
+            { key: "mode", type: "\"reasoning_only\" | \"full_rerun\"", description: "reasoning_only reruns audit/judge only. full_rerun re-collects evidence first.", required: false },
+            { key: "reason_code", type: "enum", description: "REASONING_ERROR, LOGIC_GAP, EVIDENCE_MISREAD, EVIDENCE_INSUFFICIENT, OTHER", required: true },
+            { key: "message", type: "string", description: "Dispute message describing the issue (1–8000 chars)", required: true },
+            { key: "target", type: "object", description: "{ artifact: \"evidence_bundle\" | \"reasoning_trace\" | \"verdict\" | \"prompt_spec\", leaf_path?: string }", required: false },
+            { key: "prompt_spec", type: "PromptSpec", description: "Full PromptSpec from the previous run", required: true },
+            { key: "evidence_bundle", type: "object", description: "EvidenceBundle from the previous run (for reasoning_only mode)", required: false },
+            { key: "reasoning_trace", type: "object", description: "ReasoningTrace from the previous run", required: false },
+            { key: "tool_plan", type: "object", description: "Required for full_rerun mode", required: false },
+            { key: "collectors", type: "string[]", description: "Required for full_rerun mode", required: false },
+            { key: "patch", type: "object", description: "{ evidence_items_append?: array, prompt_spec_override?: object }", required: false },
+          ]}
+          requestExample={`{
+  "mode": "reasoning_only",
+  "reason_code": "EVIDENCE_MISREAD",
+  "message": "The evidence was misinterpreted",
+  "target": {
+    "artifact": "evidence_bundle",
+    "leaf_path": "items[0].extracted_fields.outcome"
+  },
+  "prompt_spec": { ... },
+  "evidence_bundle": { ... },
+  "reasoning_trace": { ... }
+}`}
+          responseFields={[
+            { key: "ok", type: "boolean", description: "Whether the dispute rerun succeeded" },
+            { key: "case_id", type: "string | null", description: "Optional correlation ID" },
+            { key: "rerun_plan", type: "string[]", description: "Steps that were rerun, e.g. [\"audit\", \"judge\"]" },
+            { key: "artifacts", type: "object", description: "Updated artifacts: prompt_spec, evidence_bundle, evidence_bundles, reasoning_trace, verdict" },
+            { key: "diff", type: "object", description: "{ steps_rerun, verdict_changed }" },
+          ]}
+          responseExample={`{
+  "ok": true,
+  "case_id": null,
+  "rerun_plan": ["audit", "judge"],
+  "artifacts": {
+    "prompt_spec": { ... },
+    "evidence_bundle": { ... },
+    "evidence_bundles": [ ... ],
+    "reasoning_trace": { ... },
+    "verdict": { ... }
+  },
+  "diff": {
+    "steps_rerun": ["audit", "judge"],
+    "verdict_changed": null
+  }
+}`}
+        />
+
+        {/* ─── Dispute LLM ─────────────────────────────────────────────────── */}
+        <EndpointSection
+          id="dispute-llm"
+          method="POST"
+          path="/dispute/llm"
+          title="Dispute (LLM-Assisted)"
+          icon={MessageSquareWarning}
+          description="Simplified dispute endpoint that accepts 3 user inputs (reason, message, optional URLs) and uses an LLM to translate them into a structured DisputeRequest, then delegates to the existing dispute logic. Returns the same response as POST /dispute. Context artifacts (prompt_spec, evidence_bundle, reasoning_trace) are attached automatically from the current case."
+          requestFields={[
+            { key: "reason_code", type: "enum", description: "EVIDENCE_MISREAD, EVIDENCE_INSUFFICIENT, REASONING_ERROR, LOGIC_GAP, OTHER", required: true },
+            { key: "message", type: "string", description: "Free-text dispute message (1–4000 chars)", required: true },
+            { key: "evidence_urls", type: "string[]", description: "Up to 5 URLs to fetch as supporting evidence", required: false },
+            { key: "prompt_spec", type: "PromptSpec", description: "Full PromptSpec from the previous run (auto-attached by frontend)", required: true },
+            { key: "evidence_bundle", type: "object", description: "EvidenceBundle from the previous run (auto-attached)", required: false },
+            { key: "reasoning_trace", type: "object", description: "ReasoningTrace from the previous run (auto-attached)", required: false },
+            { key: "tool_plan", type: "object", description: "Only needed if LLM decides full_rerun (auto-attached)", required: false },
+            { key: "collectors", type: "string[]", description: "Only needed if LLM decides full_rerun (auto-attached)", required: false },
+          ]}
+          requestExample={`{
+  "reason_code": "EVIDENCE_MISREAD",
+  "message": "Wikipedia shows PM Shmyhal announced a preliminary agreement on Feb 25 2025",
+  "evidence_urls": [
+    "https://en.wikipedia.org/wiki/Ukraine_US_Mineral_Agreement"
+  ],
+  "prompt_spec": { ... },
+  "evidence_bundle": { ... },
+  "reasoning_trace": { ... }
+}`}
+          responseFields={[
+            { key: "ok", type: "boolean", description: "Whether the dispute rerun succeeded" },
+            { key: "case_id", type: "string | null", description: "Optional correlation ID" },
+            { key: "rerun_plan", type: "string[]", description: "Steps that were rerun" },
+            { key: "artifacts", type: "object", description: "Updated artifacts with new verdict" },
+            { key: "diff", type: "object", description: "Before/after comparison" },
+          ]}
+          responseExample={`{
+  "ok": true,
+  "case_id": null,
+  "rerun_plan": ["audit", "judge"],
+  "artifacts": {
+    "prompt_spec": { ... },
+    "evidence_bundles": [ ... ],
+    "reasoning_trace": { ... },
+    "verdict": { "outcome": "YES", "confidence": 0.92, "..." : "..." }
+  },
+  "diff": {
+    "steps_rerun": ["audit", "judge"],
+    "verdict_changed": null
+  }
+}`}
+          notes={[
+            "The user only provides reason_code, message, and optional evidence_urls. All other context is auto-attached.",
+            "The LLM decides whether to run reasoning_only or full_rerun based on the dispute content.",
+            "Returns the same response shape as POST /dispute.",
           ]}
         />
 
@@ -1425,7 +1771,10 @@ prompt = call("/step/prompt", {
 })
 spec = prompt["prompt_spec"]
 plan = prompt["tool_plan"]
-print(f"[1/5] Prompt compiled: {prompt['market_id']}")
+temporal = (spec.get("extra") or {}).get("temporal_constraint")
+print(f"[1/6] Prompt compiled: {prompt['market_id']}")
+if temporal:
+    print(f"       Temporal guard: {temporal['reason']}")
 
 # ── Step 2: Collect ─────────────────────────────────────────
 collect = call("/step/collect", {
@@ -1435,25 +1784,64 @@ collect = call("/step/collect", {
     "include_raw_content": False,
 })
 bundles = collect["evidence_bundles"]
-print(f"[2/5] Collected {len(bundles)} evidence bundle(s)")
+print(f"[2/6] Collected {len(bundles)} evidence bundle(s)")
+
+# ── Step 2.5: Quality Check + Retry ─────────────────────────
+quality_scorecard = None
+MAX_RETRIES = 2
+for i in range(MAX_RETRIES):
+    qc = call("/step/quality_check", {
+        "prompt_spec":      spec,
+        "evidence_bundles": bundles,
+    })
+    if not qc.get("ok"):
+        break
+    quality_scorecard = qc.get("scorecard")
+    if qc.get("meets_threshold"):
+        break
+    hints = (quality_scorecard or {}).get("retry_hints", {})
+    if not hints:
+        break
+    retry = call("/step/collect", {
+        "prompt_spec":      spec,
+        "tool_plan":        plan,
+        "collectors":       ["CollectorOpenSearch"],
+        "quality_feedback": hints,
+    })
+    if retry.get("ok") is not False:
+        bundles += retry.get("evidence_bundles", [])
+level = (quality_scorecard or {}).get("quality_level", "N/A")
+print(f"[2.5/6] Quality: {level}")
 
 # ── Step 3: Audit ───────────────────────────────────────────
-audit = call("/step/audit", {
+audit_payload = {
     "prompt_spec":      spec,
     "evidence_bundles": bundles,
-})
+}
+if quality_scorecard:
+    audit_payload["quality_scorecard"] = quality_scorecard
+if temporal:
+    audit_payload["temporal_constraint"] = temporal
+
+audit = call("/step/audit", audit_payload)
 trace = audit["reasoning_trace"]
-print(f"[3/5] Audit: {trace['preliminary_outcome']} "
+print(f"[3/6] Audit: {trace['preliminary_outcome']} "
       f"({trace['preliminary_confidence']:.0%})")
 
 # ── Step 4: Judge ───────────────────────────────────────────
-judge = call("/step/judge", {
+judge_payload = {
     "prompt_spec":      spec,
     "evidence_bundles": bundles,
     "reasoning_trace":  trace,
-})
+}
+if quality_scorecard:
+    judge_payload["quality_scorecard"] = quality_scorecard
+if temporal:
+    judge_payload["temporal_constraint"] = temporal
+
+judge = call("/step/judge", judge_payload)
 verdict = judge["verdict"]
-print(f"[4/5] Verdict: {judge['outcome']} ({judge['confidence']:.0%})")
+print(f"[4/6] Verdict: {judge['outcome']} ({judge['confidence']:.0%})")
 
 # ── Step 5: Bundle ──────────────────────────────────────────
 bundle = call("/step/bundle", {
@@ -1462,7 +1850,7 @@ bundle = call("/step/bundle", {
     "reasoning_trace":  trace,
     "verdict":          verdict,
 })
-print(f"[5/5] PoR Root: {bundle['por_root']}")
+print(f"[5/6] PoR Root: {bundle['por_root']}")
 
 # ── Summary ─────────────────────────────────────────────────
 print(f"\\nOutcome:    {judge['outcome']}")

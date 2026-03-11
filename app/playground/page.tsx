@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import type { ParseResult, RunSummary, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource, ExecutionLog } from "@/lib/types";
+import type { ParseResult, RunSummary, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource, ExecutionLog, TemporalConstraint, QualityScorecard } from "@/lib/types";
 import { PlaygroundInput } from "@/components/playground/playground-input";
 import { PlaygroundResults } from "@/components/playground/playground-results";
 import {
@@ -153,14 +153,21 @@ function mapEvidenceItems(bundle: any): EvidenceItem[] {
       success: item.success,
       error: item.error,
       extracted_fields: item.extracted_fields ? {
+        outcome: item.extracted_fields.outcome,
+        reason: item.extracted_fields.reason,
         confidence_score: item.extracted_fields.confidence_score,
         resolution_status: item.extracted_fields.resolution_status,
         evidence_sources: (item.extracted_fields.evidence_sources ?? []).map((es: any) => ({
           source_id: es.source_id ?? null,
-          url: es.url ?? "",
-          domain_name: es.domain_name,
+          url: es.url ?? es.uri ?? "",
+          uri: es.uri ?? es.url ?? "",
+          title: es.title ?? "",
+          domain: es.domain ?? es.domain_name ?? "",
+          domain_name: es.domain_name ?? es.domain ?? "",
+          domain_match: es.domain_match ?? undefined,
           credibility_tier: typeof es.credibility_tier === "number" ? es.credibility_tier : 3,
           key_fact: es.key_fact ?? "",
+          grounding_text: es.grounding_text ?? undefined,
           supports: es.supports ?? "N/A",
           date_published: es.date_published ?? null,
         })),
@@ -169,6 +176,10 @@ function mapEvidenceItems(bundle: any): EvidenceItem[] {
         hypothetical_document: item.extracted_fields.hypothetical_document,
         conflicts: item.extracted_fields.conflicts,
         missing_info: item.extracted_fields.missing_info,
+        grounding_search_queries: item.extracted_fields.grounding_search_queries,
+        grounding_source_count: item.extracted_fields.grounding_source_count,
+        pass_used: item.extracted_fields.pass_used,
+        data_source_domains_required: item.extracted_fields.data_source_domains_required,
       } : undefined,
     };
   });
@@ -478,7 +489,16 @@ export default function PlaygroundPage() {
         metadata: data?.prompt_metadata ?? { compiler: "llm", strict_mode: true, question_type: "unknown" },
       };
       setPromptResult(parseResult);
-      setPipelineSteps((prev) => updateStepStatus(prev, "prompt", "completed"));
+      const dataReqCount = parseResult.prompt_spec?.data_requirements?.length ?? 0;
+      const ruleCount = parseResult.prompt_spec?.market?.resolution_rules?.length ?? 0;
+      setPipelineSteps((prev) =>
+        updateStepStatus(
+          prev,
+          "prompt",
+          "completed",
+          `Spec compiled -- ${dataReqCount} data req${dataReqCount !== 1 ? "s" : ""}, ${ruleCount} rule${ruleCount !== 1 ? "s" : ""}`
+        )
+      );
       trackPlaygroundStepComplete(accessCode, "prompt", true);
       setPhase("prompted");
     } catch (err) {
@@ -507,6 +527,10 @@ export default function PlaygroundPage() {
     const promptSpec = promptResult.prompt_spec;
     const toolPlan = promptResult.tool_plan;
 
+    // Extract temporal constraint from prompt_spec.extra (may be null)
+    const temporalConstraint: TemporalConstraint | null =
+      (promptSpec?.extra?.temporal_constraint as TemporalConstraint) ?? null;
+
     try {
       // Step 2: Collect
       setPipelineSteps((prev) => updateStepStatus(prev, "collect", "running"));
@@ -525,15 +549,73 @@ export default function PlaygroundPage() {
         setPipelineSteps((prev) => updateStepStatus(prev, "collect", "error"));
         throw new Error(errMsg);
       }
-      const evidenceBundles = collectData.evidence_bundles;
-      setPipelineSteps((prev) => updateStepStatus(prev, "collect", "completed"));
+      let evidenceBundles = collectData.evidence_bundles;
+      const totalEvidence = Array.isArray(evidenceBundles)
+        ? evidenceBundles.reduce((sum: number, b: any) => sum + (b?.items?.length ?? 0), 0)
+        : 0;
+      const bundleCount = Array.isArray(evidenceBundles) ? evidenceBundles.length : 0;
+      setPipelineSteps((prev) =>
+        updateStepStatus(
+          prev,
+          "collect",
+          "completed",
+          `Collected ${totalEvidence} evidence item${totalEvidence !== 1 ? "s" : ""} from ${bundleCount} source${bundleCount !== 1 ? "s" : ""}`
+        )
+      );
       trackPlaygroundStepComplete(accessCode, "collect", true);
 
-      // Step 3: Audit
+      // Step 3: Quality check + retry loop (up to 2 retries)
+      setPipelineSteps((prev) => updateStepStatus(prev, "quality_check", "running"));
+      let qualityScorecard: QualityScorecard | null = null;
+      const MAX_QC_RETRIES = 2;
+      for (let i = 0; i < MAX_QC_RETRIES; i++) {
+        const qcData = await callApi(accessCode, "/step/quality_check", {
+          prompt_spec: promptSpec,
+          evidence_bundles: evidenceBundles,
+        });
+
+        if (!qcData.ok) break;
+        qualityScorecard = qcData.scorecard;
+
+        if (qcData.meets_threshold) break; // quality is good enough
+
+        const retryHints = qualityScorecard?.retry_hints;
+        if (!retryHints || Object.keys(retryHints).length === 0) break;
+
+        // Retry collect with feedback
+        const retryData = await callApi(accessCode, "/step/collect", {
+          prompt_spec: promptSpec,
+          tool_plan: toolPlan,
+          collectors: ["CollectorOpenSearch"],
+          quality_feedback: retryHints,
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
+        });
+        if (retryData.ok !== false && Array.isArray(retryData.evidence_bundles)) {
+          evidenceBundles = [...evidenceBundles, ...retryData.evidence_bundles];
+        }
+      }
+      const qualityLevel = qualityScorecard?.quality_level ?? "N/A";
+      const coveragePct = qualityScorecard?.requirements_coverage != null
+        ? `${Math.round(qualityScorecard.requirements_coverage * 100)}%`
+        : "N/A";
+      setPipelineSteps((prev) =>
+        updateStepStatus(
+          prev,
+          "quality_check",
+          "completed",
+          `Quality: ${qualityLevel} | Coverage: ${coveragePct} | ${qualityScorecard?.meets_threshold ? "Passed" : "Below threshold"}`
+        )
+      );
+      trackPlaygroundStepComplete(accessCode, "quality_check", true);
+
+      // Step 4: Audit
       setPipelineSteps((prev) => updateStepStatus(prev, "audit", "running"));
       const auditData = await callApi(accessCode, "/step/audit", {
         prompt_spec: promptSpec,
         evidence_bundles: evidenceBundles,
+        ...(qualityScorecard && { quality_scorecard: qualityScorecard }),
+        ...(temporalConstraint && { temporal_constraint: temporalConstraint }),
         ...(selectedProvider && { llm_provider: selectedProvider }),
         ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
@@ -543,15 +625,30 @@ export default function PlaygroundPage() {
         throw new Error(errMsg);
       }
       const reasoningTrace = auditData.reasoning_trace;
-      setPipelineSteps((prev) => updateStepStatus(prev, "audit", "completed"));
+      const reasoningStepCount = Array.isArray(reasoningTrace?.steps) ? reasoningTrace.steps.length : 0;
+      const reasoningSummarySnippet = reasoningTrace?.reasoning_summary
+        ? reasoningTrace.reasoning_summary.slice(0, 60) + (reasoningTrace.reasoning_summary.length > 60 ? "..." : "")
+        : null;
+      setPipelineSteps((prev) =>
+        updateStepStatus(
+          prev,
+          "audit",
+          "completed",
+          reasoningSummarySnippet
+            ? `${reasoningStepCount} reasoning step${reasoningStepCount !== 1 ? "s" : ""} -- ${reasoningSummarySnippet}`
+            : `Completed ${reasoningStepCount} reasoning step${reasoningStepCount !== 1 ? "s" : ""}`
+        )
+      );
       trackPlaygroundStepComplete(accessCode, "audit", true);
 
-      // Step 4: Judge
+      // Step 5: Judge
       setPipelineSteps((prev) => updateStepStatus(prev, "judge", "running"));
       const judgeData = await callApi(accessCode, "/step/judge", {
         prompt_spec: promptSpec,
         evidence_bundles: evidenceBundles,
         reasoning_trace: reasoningTrace,
+        ...(qualityScorecard && { quality_scorecard: qualityScorecard }),
+        ...(temporalConstraint && { temporal_constraint: temporalConstraint }),
         ...(selectedProvider && { llm_provider: selectedProvider }),
         ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
@@ -563,10 +660,18 @@ export default function PlaygroundPage() {
       const verdict = judgeData.verdict;
       const outcome = judgeData.outcome;
       const confidence = judgeData.confidence;
-      setPipelineSteps((prev) => updateStepStatus(prev, "judge", "completed"));
+      const confidencePct = confidence != null ? `${Math.round(confidence * 100)}%` : "N/A";
+      setPipelineSteps((prev) =>
+        updateStepStatus(
+          prev,
+          "judge",
+          "completed",
+          `Verdict: ${outcome ?? "UNKNOWN"} at ${confidencePct} confidence`
+        )
+      );
       trackPlaygroundStepComplete(accessCode, "judge", true);
 
-      // Step 5: Bundle
+      // Step 6: Bundle
       setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "running"));
       const bundleData = await callApi(accessCode, "/step/bundle", {
         prompt_spec: promptSpec,
@@ -581,7 +686,17 @@ export default function PlaygroundPage() {
       }
       const porBundle = bundleData.por_bundle;
       const porRoot = bundleData.por_root;
-      setPipelineSteps((prev) => updateStepStatus(prev, "bundle", "completed"));
+      const porRootShort = typeof porRoot === "string" && porRoot.length > 8
+        ? `${porRoot.slice(0, 8)}...`
+        : porRoot ?? "N/A";
+      setPipelineSteps((prev) =>
+        updateStepStatus(
+          prev,
+          "bundle",
+          "completed",
+          `Proof bundle created -- root: ${porRootShort}`
+        )
+      );
       trackPlaygroundStepComplete(accessCode, "bundle", true);
 
       // Build final result
@@ -604,6 +719,8 @@ export default function PlaygroundPage() {
         reasoning_trace: reasoningTrace,
         verdict,
         por_bundle: porBundle,
+        quality_scorecard: qualityScorecard,
+        temporal_constraint: temporalConstraint,
       });
       setResolveResult(summary);
       setPhase("resolved");

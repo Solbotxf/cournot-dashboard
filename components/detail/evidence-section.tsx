@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ErrorCallout } from "@/components/shared/error-callout";
 import { InlineCopyButton } from "@/components/shared/copy-field";
-import type { RunSummary, Check, ToolPlan, EvidenceItem, EvidenceBundle } from "@/lib/types";
+import type { RunSummary, Check, EvidenceItem, EvidenceBundle } from "@/lib/types";
 import {
   ChevronDown,
   CheckCircle2,
@@ -78,10 +78,8 @@ function CheckItem({ check }: { check: Check }) {
 
 export function EvidenceSection({
   result,
-  toolPlan,
 }: {
   result: RunSummary | null;
-  toolPlan: ToolPlan | null;
 }) {
   const outcome = result?.outcome;
   if (!result) return null;
@@ -92,66 +90,9 @@ export function EvidenceSection({
         <CardTitle className="text-base">Evidence & Execution</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Tool Plan overview */}
-        {toolPlan && (
-          <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Tool Plan Execution
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Requirements
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {toolPlan.requirements.map((r) => (
-                    <Badge key={r} variant="outline" className="text-[10px] font-mono">
-                      {r}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Sources Queried
-                </p>
-                <div className="space-y-1">
-                  {toolPlan.sources.map((s) => (
-                    <div key={s.source_id} className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline" className="text-[10px] font-mono capitalize">
-                        {s.provider}
-                      </Badge>
-                      <span className="text-muted-foreground font-mono text-[10px] truncate">
-                        {s.endpoint}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">T{s.tier}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">Min tier required:</span>
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  T{toolPlan.min_provenance_tier}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">Fallbacks:</span>
-                <span className={toolPlan.allow_fallbacks ? "text-emerald-400" : "text-red-400"}>
-                  {toolPlan.allow_fallbacks ? "Allowed" : "Disabled"}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Evidence Bundles (new multi-collector format) */}
         {result.evidence_bundles && result.evidence_bundles.length > 0 && (
-          <>
-            <Separator />
-            <div className="space-y-4">
+          <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Layers className="h-4 w-4 text-violet-400" />
@@ -168,8 +109,7 @@ export function EvidenceSection({
                   <EvidenceBundleCard key={bundle.bundle_id} bundle={bundle} outcome={outcome} />
                 ))}
               </div>
-            </div>
-          </>
+          </div>
         )}
 
         {/* Legacy: Evidence items (single bundle format) */}
@@ -225,6 +165,12 @@ function EvidenceBundleCard({ bundle, outcome }: { bundle: EvidenceBundle; outco
   const [expanded, setExpanded] = useState(true);
   const colorClass = collectorColors[bundle.collector_name] ?? "text-muted-foreground border-border bg-muted/20";
 
+  // Collector-level fields from the first item
+  const collectorExtracted = bundle.items[0]?.extracted_fields;
+  const collectorOutcome = collectorExtracted?.outcome;
+  const collectorReason = collectorExtracted?.reason;
+  const collectorConfidence = collectorExtracted?.confidence_score;
+
   return (
     <div className="rounded-xl border border-border/50 overflow-hidden">
       {/* Bundle Header */}
@@ -241,6 +187,26 @@ function EvidenceBundleCard({ bundle, outcome }: { bundle: EvidenceBundle; outco
             <Badge variant="outline" className={cn("text-[10px]", colorClass)}>
               {bundle.items.length} items
             </Badge>
+            {collectorOutcome && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-medium",
+                  collectorOutcome === "Yes"
+                    ? "text-emerald-400 border-emerald-500/30"
+                    : collectorOutcome === "No"
+                      ? "text-red-400 border-red-500/30"
+                      : "text-amber-400 border-amber-500/30"
+                )}
+              >
+                {collectorOutcome}
+              </Badge>
+            )}
+            {collectorConfidence != null && (
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {Math.round(collectorConfidence * 100)}%
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-0.5">
             {bundle.execution_time_ms !== undefined && (
@@ -265,6 +231,18 @@ function EvidenceBundleCard({ bundle, outcome }: { bundle: EvidenceBundle; outco
       {/* Bundle Content */}
       {expanded && (
         <div className="border-t border-border/50 p-4 bg-muted/5 space-y-3">
+          {/* Collector-level reason */}
+          {collectorReason && (
+            <div className="rounded-lg bg-muted/20 border border-border/30 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Collector Reasoning
+              </p>
+              <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {collectorReason}
+              </p>
+            </div>
+          )}
+
           {bundle.items.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">
               No evidence items collected

@@ -163,7 +163,7 @@ export function CaseDetailClient({ eventId }: CaseDetailClientProps) {
 
       {/* ═══ Evidence Section (resolved cases with evidence items) ═══ */}
       {isResolved && c.oracle_result?.evidence_items && c.oracle_result.evidence_items.length > 0 && (
-        <EvidenceSection result={c.oracle_result} toolPlan={c.parse_result.tool_plan} />
+        <EvidenceSection result={c.oracle_result} />
       )}
 
       {/* ═══ PROOF NARRATIVE (resolved cases only) ═══ */}

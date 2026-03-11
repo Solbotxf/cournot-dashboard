@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useMemo, useState } from "react";
-import { Sparkles, Search, Brain, Scale, ChevronRight, Info, AlertTriangle, ExternalLink, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
+import { Sparkles, Search, ShieldCheck, Brain, Scale, ChevronRight, Info, AlertTriangle, ExternalLink, CheckCircle2, XCircle, MinusCircle, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -137,29 +137,206 @@ export function PipelineStepsView({
     setDisputeResults((prev) => ({ ...prev, [stepId]: result }));
   }
 
+  // Insert quality check card after evidence (index 1) and before reasoning (index 2)
+  const qualityScorecard = artifacts.quality_scorecard;
+  const temporalConstraint = artifacts.temporal_constraint;
+
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-muted-foreground tracking-wide uppercase">
-        Resolution Pipeline
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-muted-foreground tracking-wide uppercase">
+          Resolution Pipeline
+        </h3>
+        {temporalConstraint && (
+          <div className="flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1">
+            <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-xs text-amber-400 font-medium">Temporal guard active</span>
+          </div>
+        )}
+      </div>
       <div className="space-y-3">
         {PIPELINE_STEPS.map((config, idx) => (
-          <StepCard
-            key={config.id}
-            stepNumber={idx + 1}
-            config={config}
-            artifacts={artifacts}
-            resolveResult={resolveResult}
-            promptResult={promptResult}
-            disputeResult={disputeResults[config.id] ?? null}
-            onSubmitDispute={onSubmitDispute}
-            onDisputeResult={(res) =>
-              handleStepDisputeResult(config.id, res)
-            }
-          />
+          <div key={config.id}>
+            <StepCard
+              stepNumber={qualityScorecard && idx >= 2 ? idx + 2 : idx + 1}
+              config={config}
+              artifacts={artifacts}
+              resolveResult={resolveResult}
+              promptResult={promptResult}
+              disputeResult={disputeResults[config.id] ?? null}
+              onSubmitDispute={onSubmitDispute}
+              onDisputeResult={(res) =>
+                handleStepDisputeResult(config.id, res)
+              }
+            />
+            {/* Quality check card between evidence and reasoning */}
+            {idx === 1 && qualityScorecard && (
+              <div className="mt-3">
+                <QualityCheckCard scorecard={qualityScorecard} />
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>
+  );
+}
+
+// ─── Quality Check Card ──────────────────────────────────────────────────────
+
+function QualityCheckCard({ scorecard }: { scorecard: any }) {
+  const [showRetryHints, setShowRetryHints] = useState(false);
+
+  const qualityColors: Record<string, string> = {
+    HIGH: "text-emerald-400",
+    MEDIUM: "text-amber-400",
+    LOW: "text-red-400",
+  };
+
+  const sourceMatchColors: Record<string, string> = {
+    FULL: "text-emerald-400",
+    PARTIAL: "text-amber-400",
+    NONE: "text-red-400",
+  };
+
+  const retryHints = scorecard?.retry_hints;
+  const hasRetryHints = retryHints && Object.keys(retryHints).length > 0;
+
+  return (
+    <Card className="border-border/50 border-l-4 border-l-cyan-500">
+      <CardContent className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-7 h-7 rounded-md bg-cyan-500/10">
+            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">Quality Check</span>
+              {scorecard.meets_threshold ? (
+                <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-400">
+                  Passed
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-400">
+                  Below threshold
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Evidence quality evaluation
+            </p>
+          </div>
+        </div>
+
+        {/* Scorecard metrics */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+          <span>
+            <span className="text-muted-foreground">Quality:</span>{" "}
+            <span className={qualityColors[scorecard.quality_level] ?? ""}>
+              {scorecard.quality_level}
+            </span>
+          </span>
+          <span>
+            <span className="text-muted-foreground">Source match:</span>{" "}
+            <span className={sourceMatchColors[scorecard.source_match] ?? ""}>
+              {scorecard.source_match}
+            </span>
+          </span>
+          <span>
+            <span className="text-muted-foreground">Data type:</span>{" "}
+            {scorecard.data_type_match ? (
+              <span className="text-emerald-400">match</span>
+            ) : (
+              <span className="text-red-400">mismatch</span>
+            )}
+          </span>
+          <span>
+            <span className="text-muted-foreground">Agreement:</span>{" "}
+            {scorecard.collector_agreement}
+          </span>
+          {scorecard.requirements_coverage != null && (
+            <span>
+              <span className="text-muted-foreground">Coverage:</span>{" "}
+              <span className="font-mono">{Math.round(scorecard.requirements_coverage * 100)}%</span>
+            </span>
+          )}
+        </div>
+
+        {/* Quality flags */}
+        {scorecard.quality_flags && scorecard.quality_flags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {scorecard.quality_flags.map((flag: string) => (
+              <Badge key={flag} variant="outline" className="text-[10px] font-mono border-amber-500/30 text-amber-400">
+                {flag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {scorecard.recommendations && scorecard.recommendations.length > 0 && (
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Recommendations:</p>
+            <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5 ml-1">
+              {scorecard.recommendations.map((rec: string, i: number) => (
+                <li key={i}>{rec}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Retry hints (expandable) */}
+        {hasRetryHints && (
+          <>
+            <button
+              onClick={() => setShowRetryHints(!showRetryHints)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight
+                className={cn(
+                  "w-3 h-3 transition-transform",
+                  showRetryHints && "rotate-90"
+                )}
+              />
+              Retry hints
+            </button>
+            {showRetryHints && (
+              <div className="rounded-md bg-muted/10 p-2.5 text-xs space-y-1.5">
+                {retryHints.search_queries && retryHints.search_queries.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Search queries:</span>
+                    <ul className="list-disc list-inside ml-1">
+                      {retryHints.search_queries.map((q: string, i: number) => (
+                        <li key={i} className="font-mono">{q}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {retryHints.required_domains && retryHints.required_domains.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Required domains:</span>{" "}
+                    <span className="font-mono">{retryHints.required_domains.join(", ")}</span>
+                  </div>
+                )}
+                {retryHints.focus_requirements && retryHints.focus_requirements.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Focus requirements:</span>{" "}
+                    <span className="font-mono">{retryHints.focus_requirements.join(", ")}</span>
+                  </div>
+                )}
+                {retryHints.collector_guidance && (
+                  <div>
+                    <span className="text-muted-foreground">Guidance:</span>{" "}
+                    {retryHints.collector_guidance}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -437,6 +614,13 @@ function EvidenceBody({
         {bundles.map((b: any, idx: number) => {
           const isOpen = !!expandedBundles[idx];
           const items: any[] = b?.items ?? [];
+
+          // Derive collector-level outcome/reason from the first item's extracted_fields
+          const collectorExtracted = items[0]?.extracted_fields;
+          const collectorOutcome = collectorExtracted?.outcome;
+          const collectorReason = collectorExtracted?.reason;
+          const collectorConfidence = collectorExtracted?.confidence_score;
+
           return (
             <div
               key={b?.bundle_id ?? idx}
@@ -456,11 +640,46 @@ function EvidenceBody({
                 <Badge variant="outline" className="text-[10px] font-mono">
                   {b?.collector_name ?? `bundle-${idx}`}
                 </Badge>
-                <span>{items.length} items</span>
+                {collectorOutcome && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[9px] shrink-0",
+                      collectorOutcome === "Yes"
+                        ? "border-emerald-500/50 text-emerald-400"
+                        : collectorOutcome === "No"
+                          ? "border-red-500/50 text-red-400"
+                          : "border-amber-500/50 text-amber-400"
+                    )}
+                  >
+                    {collectorOutcome}
+                  </Badge>
+                )}
+                {collectorConfidence != null && (
+                  <span className="text-muted-foreground font-mono">
+                    {Math.round(collectorConfidence * 100)}%
+                  </span>
+                )}
+                <span className="text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""}</span>
+                {b?.total_sources_succeeded != null && b?.total_sources_attempted != null && (
+                  <span className="text-muted-foreground">
+                    {b.total_sources_succeeded}/{b.total_sources_attempted} sources ok
+                  </span>
+                )}
                 {b?.execution_time_ms != null && (
                   <span className="text-muted-foreground">
                     {b.execution_time_ms}ms
                   </span>
+                )}
+                {b?.requirements_fulfilled && b.requirements_fulfilled.length > 0 && (
+                  <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">
+                    {b.requirements_fulfilled.length} req fulfilled
+                  </Badge>
+                )}
+                {b?.requirements_unfulfilled && b.requirements_unfulfilled.length > 0 && (
+                  <Badge variant="outline" className="text-[9px] border-red-500/30 text-red-400">
+                    {b.requirements_unfulfilled.length} req unfulfilled
+                  </Badge>
                 )}
                 {b?.weight != null && (
                   <span className="text-muted-foreground ml-auto">
@@ -469,9 +688,19 @@ function EvidenceBody({
                 )}
               </button>
 
-              {/* Expanded items */}
+              {/* Expanded content */}
               {isOpen && (
                 <div className="border-t border-border/20">
+                  {/* Collector-level reason (from extracted_fields) */}
+                  {collectorReason && (
+                    <div className="px-3 py-2.5 border-b border-border/10">
+                      <p className="text-xs text-muted-foreground mb-1 font-medium">Collector reasoning:</p>
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap rounded bg-muted/15 p-2">
+                        {collectorReason}
+                      </p>
+                    </div>
+                  )}
+
                   {items.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic px-2.5 py-2">
                       No items in this bundle
@@ -483,8 +712,17 @@ function EvidenceBody({
                       const hasError =
                         item?.error || item?.success === false;
                       const extracted = item?.extracted_fields;
+                      const isUnresolved = extracted?.outcome === "Unresolved";
                       const evidenceSources =
                         extracted?.evidence_sources ?? [];
+
+                      // Support both raw (provenance nested) and mapped (flat) formats
+                      const sourceName = item?.source_name || item?.provenance?.source_id || item?.evidence_id || `Item ${itemIdx}`;
+                      const sourceUri = item?.source_uri || item?.provenance?.source_uri;
+                      const tier = item?.tier ?? item?.provenance?.tier;
+                      const fetchedAt = item?.fetched_at || item?.provenance?.fetched_at;
+                      const contentHash = item?.content_hash || item?.provenance?.content_hash;
+                      const parsedExcerpt = item?.parsed_excerpt || (typeof item?.parsed_value === "string" ? item.parsed_value : null);
 
                       return (
                         <div
@@ -507,18 +745,20 @@ function EvidenceBody({
                             />
                             {hasError ? (
                               <XCircle className="w-3 h-3 shrink-0 text-red-400" />
+                            ) : isUnresolved ? (
+                              <MinusCircle className="w-3 h-3 shrink-0 text-amber-400" />
                             ) : (
                               <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-400" />
                             )}
                             <span className="truncate font-medium">
-                              {item?.source_name || item?.evidence_id || `Item ${itemIdx}`}
+                              {sourceName}
                             </span>
-                            {item?.tier != null && (
+                            {tier != null && (
                               <Badge
                                 variant="outline"
                                 className="text-[9px] shrink-0"
                               >
-                                Tier {item.tier}
+                                Tier {tier}
                               </Badge>
                             )}
                             {extracted?.confidence_score != null && (
@@ -535,31 +775,31 @@ function EvidenceBody({
                           {itemOpen && (
                             <div className="px-4 pb-2.5 pt-1 space-y-2 text-xs">
                               {/* URL */}
-                              {item?.source_uri && (
+                              {sourceUri && (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-muted-foreground shrink-0">
                                     URL:
                                   </span>
                                   <a
-                                    href={item.source_uri}
+                                    href={sourceUri}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-400 hover:underline truncate flex items-center gap-1"
                                   >
-                                    {item.source_uri}
+                                    {sourceUri}
                                     <ExternalLink className="w-3 h-3 shrink-0" />
                                   </a>
                                 </div>
                               )}
 
                               {/* Excerpt */}
-                              {item?.parsed_excerpt && (
+                              {parsedExcerpt && (
                                 <div>
                                   <p className="text-muted-foreground mb-0.5">
                                     Excerpt:
                                   </p>
                                   <p className="rounded bg-muted/15 p-2 leading-relaxed whitespace-pre-wrap">
-                                    {item.parsed_excerpt}
+                                    {parsedExcerpt}
                                   </p>
                                 </div>
                               )}
@@ -579,6 +819,22 @@ function EvidenceBody({
                                   </p>
 
                                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                                    {extracted.outcome && (
+                                      <span>
+                                        <span className="text-muted-foreground">
+                                          Outcome:
+                                        </span>{" "}
+                                        <span className={
+                                          extracted.outcome === "Yes"
+                                            ? "text-emerald-400"
+                                            : extracted.outcome === "No"
+                                              ? "text-red-400"
+                                              : "text-amber-400"
+                                        }>
+                                          {extracted.outcome}
+                                        </span>
+                                      </span>
+                                    )}
                                     {extracted.resolution_status && (
                                       <span>
                                         <span className="text-muted-foreground">
@@ -590,9 +846,17 @@ function EvidenceBody({
                                     {extracted.hypothesis_match && (
                                       <span>
                                         <span className="text-muted-foreground">
-                                          Hypothesis match:
+                                          Hypothesis:
                                         </span>{" "}
-                                        {extracted.hypothesis_match}
+                                        <span className={
+                                          extracted.hypothesis_match === "CONFIRMED"
+                                            ? "text-emerald-400"
+                                            : extracted.hypothesis_match === "CONTRADICTED"
+                                              ? "text-red-400"
+                                              : "text-amber-400"
+                                        }>
+                                          {extracted.hypothesis_match}
+                                        </span>
                                       </span>
                                     )}
                                     {extracted.confidence_score != null && (
@@ -601,11 +865,62 @@ function EvidenceBody({
                                           Confidence:
                                         </span>{" "}
                                         <span className="font-mono">
-                                          {extracted.confidence_score}
+                                          {Math.round(extracted.confidence_score * 100)}%
+                                        </span>
+                                      </span>
+                                    )}
+                                    {extracted.pass_used && (
+                                      <span>
+                                        <span className="text-muted-foreground">
+                                          Pass:
+                                        </span>{" "}
+                                        <span className="font-mono">
+                                          {extracted.pass_used}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {extracted.grounding_source_count != null && (
+                                      <span>
+                                        <span className="text-muted-foreground">
+                                          Grounding sources:
+                                        </span>{" "}
+                                        <span className="font-mono">
+                                          {extracted.grounding_source_count}
                                         </span>
                                       </span>
                                     )}
                                   </div>
+
+                                  {/* Grounding search queries */}
+                                  {extracted.grounding_search_queries &&
+                                    extracted.grounding_search_queries.length > 0 && (
+                                      <div>
+                                        <p className="text-muted-foreground text-[11px]">
+                                          Search queries:
+                                        </p>
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {extracted.grounding_search_queries.map(
+                                            (q: string, i: number) => (
+                                              <Badge key={i} variant="outline" className="text-[10px] font-mono">
+                                                {q}
+                                              </Badge>
+                                            )
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                  {/* Hypothetical document (for HyDE collector) */}
+                                  {extracted.hypothetical_document && (
+                                    <div>
+                                      <p className="text-muted-foreground text-[11px]">
+                                        Hypothetical document:
+                                      </p>
+                                      <p className="rounded bg-amber-500/5 border border-amber-500/10 p-2 text-[11px] leading-relaxed whitespace-pre-wrap mt-0.5">
+                                        {extracted.hypothetical_document}
+                                      </p>
+                                    </div>
+                                  )}
 
                                   {/* Discrepancies */}
                                   {extracted.discrepancies &&
@@ -683,14 +998,19 @@ function EvidenceBody({
                                                 <p className="font-medium">
                                                   {src.key_fact}
                                                 </p>
-                                                {src.url && (
+                                                {src.grounding_text && (
+                                                  <p className="text-[10px] text-muted-foreground italic mt-0.5 leading-relaxed">
+                                                    &ldquo;{src.grounding_text}&rdquo;
+                                                  </p>
+                                                )}
+                                                {(src.url || src.uri) && (
                                                   <a
-                                                    href={src.url}
+                                                    href={src.url || src.uri}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-400 hover:underline truncate block flex items-center gap-1"
                                                   >
-                                                    {src.domain_name ?? src.url}
+                                                    {src.title || src.domain_name || src.domain || src.url || src.uri}
                                                     <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                                                   </a>
                                                 )}
@@ -737,11 +1057,16 @@ function EvidenceBody({
                                     id: {item.evidence_id}
                                   </span>
                                 )}
-                                {item?.fetched_at && (
+                                {item?.requirement_id && (
+                                  <span className="font-mono">
+                                    req: {item.requirement_id}
+                                  </span>
+                                )}
+                                {fetchedAt && (
                                   <span>
                                     fetched:{" "}
                                     {new Date(
-                                      item.fetched_at
+                                      fetchedAt
                                     ).toLocaleString()}
                                   </span>
                                 )}
@@ -750,9 +1075,9 @@ function EvidenceBody({
                                     HTTP {item.status_code}
                                   </span>
                                 )}
-                                {item?.content_hash && (
+                                {contentHash && (
                                   <span className="font-mono truncate max-w-[140px]">
-                                    hash: {item.content_hash}
+                                    hash: {contentHash}
                                   </span>
                                 )}
                               </div>
