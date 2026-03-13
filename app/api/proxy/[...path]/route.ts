@@ -81,3 +81,44 @@ export async function POST(
     );
   }
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { path: string[] } }
+) {
+  const path = params.path.join("/");
+  const search = request.nextUrl.search;
+  const url = `${UPSTREAM}/${path}${search}`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), POST_TIMEOUT_MS);
+
+    const body = await request.text();
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return NextResponse.json(
+        { error: "Upstream request timed out" },
+        { status: 504 }
+      );
+    }
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Upstream request failed" },
+      { status: 502 }
+    );
+  }
+}
