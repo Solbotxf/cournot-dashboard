@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import type { ParseResult, RunSummary, EvidenceItem, EvidenceBundle, ExecutionMode, DiscoveredSource, ExecutionLog, TemporalConstraint, QualityScorecard } from "@/lib/types";
-import { callApi, InvalidCodeError, buildRunSummary, toRunSummary, mapEvidenceBundles } from "@/lib/oracle-api";
+import type { ParseResult, RunSummary, ExecutionLog, TemporalConstraint, QualityScorecard } from "@/lib/types";
+import { callApi, InvalidCodeError, buildRunSummary, toRunSummary } from "@/lib/oracle-api";
 import { PlaygroundInput } from "@/components/playground/playground-input";
 import { PlaygroundResults } from "@/components/playground/playground-results";
+import type { ResolutionArtifacts } from "@/components/playground/dispute-panel";
+import type { ValidationResult } from "@/components/playground/validation-card";
 import {
   PipelineProgress,
   PipelineStep,
@@ -41,13 +43,28 @@ interface CollectorInfo {
   description: string;
 }
 
+interface CollectorAgent {
+  name: string;
+  description?: string;
+  is_fallback?: boolean;
+}
+
+interface CollectorStep {
+  step: string;
+  agents: CollectorAgent[];
+}
+
+interface EvidenceBundleData {
+  items?: unknown[];
+}
+
 type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
 // ─── Page Component ─────────────────────────────────────────────────────────
 
 export default function PlaygroundPage() {
   // Access code
-  const { isAuthenticated, accessCode, login, logout, isLoading: codeLoading } = useRole();
+  const { accessCode, login, logout, isLoading: codeLoading } = useRole();
   const codeLoaded = !codeLoading;
   const [codeInput, setCodeInput] = useState("");
 
@@ -100,15 +117,15 @@ export default function PlaygroundPage() {
           setProviders(data.providers);
         }
         if (Array.isArray(data.steps)) {
-          const collectorStep = data.steps.find((s: any) => s.step === "collector");
+          const collectorStep = data.steps.find((s: CollectorStep) => s.step === "collector") as CollectorStep | undefined;
           if (collectorStep && Array.isArray(collectorStep.agents)) {
-            const collectors: CollectorInfo[] = collectorStep.agents.map((a: any) => ({
+            const collectors: CollectorInfo[] = collectorStep.agents.map((a: CollectorAgent) => ({
               id: a.name,
               name: (a.name as string).replace(/^Collector/, ""),
               description: a.description ?? "",
             }));
             setAvailableCollectors(collectors);
-            const defaultCollector = collectorStep.agents.find((a: any) => !a.is_fallback);
+            const defaultCollector = collectorStep.agents.find((a: CollectorAgent) => !a.is_fallback);
             if (defaultCollector) {
               setCollectorCounts({ [defaultCollector.name]: 1 });
             } else if (collectors.length > 0) {
@@ -132,9 +149,9 @@ export default function PlaygroundPage() {
   // Results
   const [promptResult, setPromptResult] = useState<ParseResult | null>(null);
   const [resolveResult, setResolveResult] = useState<RunSummary | null>(null);
-  const [resolutionArtifacts, setResolutionArtifacts] = useState<any | null>(null);
+  const [resolutionArtifacts, setResolutionArtifacts] = useState<ResolutionArtifacts | null>(null);
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
-  const [validationResult, setValidationResult] = useState<any | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
   // Pipeline progress
   const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>(createInitialSteps());
@@ -298,7 +315,7 @@ export default function PlaygroundPage() {
       }
       let evidenceBundles = collectData.evidence_bundles;
       const totalEvidence = Array.isArray(evidenceBundles)
-        ? evidenceBundles.reduce((sum: number, b: any) => sum + (b?.items?.length ?? 0), 0)
+        ? evidenceBundles.reduce((sum: number, b: EvidenceBundleData) => sum + (b?.items?.length ?? 0), 0)
         : 0;
       const bundleCount = Array.isArray(evidenceBundles) ? evidenceBundles.length : 0;
       setPipelineSteps((prev) =>
