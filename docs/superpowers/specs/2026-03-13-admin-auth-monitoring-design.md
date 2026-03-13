@@ -19,7 +19,8 @@ Browser (Next.js 14)
         └── Detail + resolution workflow
 
 Next.js API Proxy (/api/proxy/[...path])
-├── Forwards Authorization: Bearer header
+├── Forwards Authorization: Bearer header from incoming request
+├── Supports GET, POST, PUT methods
 └── Proxies to UPSTREAM_API_BASE
 
 Cournot Backend (interface.cournot.ai)
@@ -136,6 +137,12 @@ interface AuthState {
 
 **Page load restoration:** Check localStorage for token → `GET /auth/me` to validate → restore or clear.
 
+### JWT Expiration Handling
+
+When the JWT expires mid-session:
+- Any API call returning error code `4010` triggers: clear auth state from localStorage, show toast "Session expired, please reconnect", reset `AuthContext` to logged-out state.
+- Proactive check: on each API call, compare `expires_at` against current time. If within 5 minutes of expiry, show a warning toast. No refresh token mechanism — user must re-authenticate via wallet signature.
+
 ### Test Mode
 
 When `NEXT_PUBLIC_ENABLE_TEST_AUTH=true`:
@@ -145,6 +152,8 @@ When `NEXT_PUBLIC_ENABLE_TEST_AUTH=true`:
 - Calls `/auth/verify` with a special test signature
 - Backend recognizes test mode and returns admin JWT
 - All subsequent API calls work normally with the test JWT
+
+**Security:** `NEXT_PUBLIC_ENABLE_TEST_AUTH` must never be `true` in production builds. Defense in depth: the backend must also have its own `TEST_AUTH_ENABLED` flag — the test signature is only accepted when both frontend and backend flags are enabled.
 
 ## 2. Admin Market Management
 
@@ -175,7 +184,7 @@ interface AdminMarket {
   updated_at: string;            // ISO 8601
 }
 
-type MarketStatus = "ACTIVE" | "MONITORING" | "ALERTED" | "RESOLVING" | "RESOLVED" | "EXPIRED";
+type MarketStatus = "ACTIVE" | "MONITORING" | "ALERTED" | "RESOLVING" | "RESOLVED" | "EXPIRED" | "CANCELLED";
 type AlertLevel = "none" | "low" | "medium" | "high" | "critical";
 
 interface Resolution {
@@ -197,8 +206,8 @@ ACTIVE → MONITORING → ALERTED → RESOLVING → RESOLVED
   (added)   (after       (signal    (admin      (confirmed)
              start_time)  detected)  reviewing)
 
-                                               → EXPIRED
-                                          (past resolve_time, no resolution)
+Any non-terminal status → CANCELLED (admin removes market from monitoring)
+                        → EXPIRED   (past resolve_time, no resolution)
 ```
 
 ### Admin API
@@ -213,7 +222,7 @@ List markets with filtering and pagination.
 - `status` — comma-separated: `ALERTED,MONITORING`
 - `alert_level` — comma-separated: `high,critical`
 - `platform` — single value: `polymarket`
-- `page` — default 1
+- `page_num` — default 1 (matches existing codebase convention)
 - `page_size` — default 20
 - `sort` — field name: `resolve_time`
 - `order` — `asc` | `desc`
@@ -223,7 +232,7 @@ List markets with filtering and pagination.
 {
   "markets": [AdminMarket],
   "total": 42,
-  "page": 1,
+  "page_num": 1,
   "page_size": 20
 }
 ```
@@ -305,24 +314,26 @@ Submit final resolution. Triggers Lark notification + Telegram broadcast.
 
 ### Error Responses
 
-Standard error envelope matching existing pattern:
+Standard error envelope matching existing pattern (`code: 0` = success, non-zero = error):
 
 ```json
 {
-  "code": 4xxx,
-  "msg": "Human-readable error",
-  "data": null
+  "code": 0,
+  "msg": "success",
+  "data": { ... }
 }
 ```
 
-| Code | Meaning |
-|------|---------|
-| 4000 | Bad request (validation error) |
-| 4010 | Unauthorized (no token or expired) |
-| 4030 | Forbidden (valid token but not admin) |
-| 4040 | Not found |
-| 4090 | Conflict (market already resolved) |
-| 5000 | Internal server error |
+Error codes (non-zero `code` field in response body; HTTP status also set accordingly):
+
+| Code | HTTP Status | Meaning |
+|------|-------------|---------|
+| 4000 | 400 | Bad request (validation error) |
+| 4010 | 401 | Unauthorized (no token or expired) |
+| 4030 | 403 | Forbidden (valid token but not admin) |
+| 4040 | 404 | Not found |
+| 4090 | 409 | Conflict (market already resolved) |
+| 5000 | 500 | Internal server error |
 
 ## 3. UI Design
 
@@ -372,14 +383,14 @@ Standard error envelope matching existing pattern:
 
 When admin clicks "Run Proof of Reasoning":
 
-1. Frontend calls existing `/step/resolve` via proxy (same as playground single-call mode)
+1. Frontend calls `/api/proxy/step/resolve` directly with JWT `Authorization` header (NOT through the playground's `ai_data` code-wrapping gateway). This means the backend must accept JWT auth on `/step/*` endpoints in addition to the existing access-code auth.
 2. Shows loading state (reuse `pipeline-progress` component)
-3. On success, displays `RunSummary` (reuse playground result components)
+3. On success, maps the raw response through the same transform logic used in the playground to produce a `RunSummary`, then displays it (reuse playground result components)
 4. Pre-fills resolution form: outcome, confidence, por_root from `RunSummary`
 5. If admin modifies outcome or confidence, method auto-changes from `"por"` to `"por_modified"`
 6. Admin clicks "Confirm & Notify" → `POST /admin/markets/:id/resolve`
 
-No new oracle API endpoints needed.
+**Backend requirement:** `/step/*` endpoints must accept `Authorization: Bearer {jwt}` as an alternative to the access-code envelope. When a valid admin JWT is present, skip access-code validation.
 
 ## 5. Notification Pipeline (Backend-Side)
 
@@ -449,7 +460,7 @@ app/
 components/
 ├── auth/
 │   ├── connect-button.tsx     # Wallet connect/disconnect in topbar
-│   └── auth-provider.tsx      # WagmiProvider + AuthContext wrapper
+│   └── auth-provider.tsx      # Client component: QueryClientProvider > WagmiProvider > AuthContext.Provider
 └── admin/
     ├── market-table.tsx       # Market list table with filters
     ├── market-form.tsx        # Add/edit market form
@@ -463,7 +474,7 @@ components/
 ```
 lib/types.ts                         # + AdminMarket, Resolution, AlertLevel types
 app/layout.tsx                       # + wrap with WagmiProvider + AuthProvider
-app/api/proxy/[...path]/route.ts     # + forward Authorization header
+app/api/proxy/[...path]/route.ts     # + forward Authorization header, + add PUT handler
 components/layout/sidebar.tsx        # + admin nav items (conditional)
 components/layout/topbar.tsx         # + connect button (replace placeholder)
 package.json                         # + wagmi, viem, @tanstack/react-query
