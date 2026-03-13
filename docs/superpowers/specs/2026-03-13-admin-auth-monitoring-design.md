@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add wallet-based authentication, role-based access control, and an admin market monitoring dashboard to the Cournot Dashboard. Admins can add markets for monitoring, receive Lark alerts when resolution signals are detected, trigger Proof of Reasoning, and confirm resolutions that get broadcast to Lark and Telegram.
+Add code-based role checking and an admin market monitoring dashboard to the Cournot Dashboard. The existing access code pattern is extended: the backend exposes an endpoint that accepts a code and returns the user's role. Admin-role users gain access to a market monitoring dashboard where they can add markets, view alerts, trigger Proof of Reasoning, and confirm resolutions that get broadcast to Lark and Telegram.
 
 **Scope:** Frontend changes only in this repo. Backend receives an API spec to implement on the existing `interface.cournot.ai` service.
 
@@ -10,150 +10,112 @@ Add wallet-based authentication, role-based access control, and an admin market 
 
 ```
 Browser (Next.js 14)
-├── EVM Wallet (MetaMask via wagmi v2 + viem)
-├── AuthContext (JWT + role in localStorage)
+├── Access code (existing pattern, stored in localStorage)
+├── RoleContext (role from /auth/role, cached in localStorage)
 ├── Existing pages: /cases, /playground, /monitoring, /developer
-└── NEW: /admin/markets (role-gated)
+└── NEW: /admin/markets (role-gated, admin only)
         ├── List view with filters
         ├── Add market form
         └── Detail + resolution workflow
 
 Next.js API Proxy (/api/proxy/[...path])
-├── Forwards Authorization: Bearer header from incoming request
 ├── Supports GET, POST, PUT methods
-└── Proxies to UPSTREAM_API_BASE
+├── Proxies to UPSTREAM_API_BASE (= .../play/polymarket)
+└── Admin endpoints hosted under this same prefix on the backend
+    (e.g., /play/polymarket/admin/markets, /play/polymarket/auth/role)
 
 Cournot Backend (interface.cournot.ai)
-├── NEW: /auth/* endpoints (challenge, verify, logout, me)
-├── NEW: /admin/markets/* endpoints (CRUD + resolve)
+├── NEW: GET /auth/role (accepts code, returns role)
+├── NEW: /admin/markets/* endpoints (CRUD + resolve, all code-guarded)
 ├── EXISTING: /step/* oracle pipeline (reused for PoR)
 ├── Market monitor loop (existing mechanism)
 ├── Lark integration (alerts + resolution notices)
 └── Telegram integration (resolution broadcast with evidence)
 ```
 
-## 1. Authentication
+## 1. Authentication via Access Code
 
 ### Flow
 
-1. User clicks "Connect Wallet" in topbar
-2. wagmi `useConnect()` triggers MetaMask popup, user approves, frontend gets address
-3. Frontend calls `POST /auth/challenge` with address
-4. Backend returns challenge message containing nonce + timestamp (expires in 300s)
-5. wagmi `useSignMessage()` triggers MetaMask sign popup, user signs
-6. Frontend calls `POST /auth/verify` with address, signature, and challenge
-7. Backend recovers address via `ecrecover`, verifies nonce/timestamp, looks up role, returns JWT
-8. Frontend stores token, address, role in `AuthContext` + localStorage
-9. All subsequent API calls include `Authorization: Bearer {jwt}` header
+1. User enters access code (reuses existing playground code entry pattern)
+2. Frontend calls `GET /auth/role?code={code}` via proxy
+3. Backend validates code, returns role (`"admin"` or `"user"`)
+4. Frontend stores code + role in `RoleContext` + localStorage
+5. If role is `"admin"`, sidebar shows admin section, admin routes become accessible
+6. All subsequent API calls include the `code` as a query parameter or in the request body (matching existing playground pattern)
+7. Logout clears code + role from localStorage and resets `RoleContext`
 
 ### Auth API
 
-#### POST /auth/challenge
+#### GET /auth/role
 
-Request a challenge message for wallet signature.
+Validate an access code and return the associated role.
 
-**Request:**
-```json
-{ "address": "0xABC..." }
-```
+**Query params:**
+- `code` — the access code string
 
-**Response:**
+**Response (success):**
 ```json
 {
-  "challenge": "Sign this message to login to Cournot Dashboard\nNonce: a1b2c3\nTimestamp: 2026-03-13T12:00:00Z\nExpires: 300s",
-  "expires_at": "2026-03-13T12:05:00Z"
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "role": "admin"
+  }
 }
 ```
 
-#### POST /auth/verify
-
-Submit signed challenge. Backend recovers address, verifies nonce, returns JWT + role.
-
-**Request:**
+**Response (invalid code):**
 ```json
 {
-  "address": "0xABC...",
-  "signature": "0x123...",
-  "challenge": "Sign this message..."
+  "code": 4100,
+  "msg": "Invalid access code",
+  "data": null
 }
 ```
 
-**Response:**
-```json
-{
-  "token": "eyJhbG...",
-  "address": "0xABC...",
-  "role": "admin" | "user",
-  "expires_at": "2026-03-14T12:00:00Z"
-}
-```
+This reuses the existing error code `4100` that the playground already handles for invalid codes.
 
-#### GET /auth/me
-
-Validate existing JWT and return current session. Used on page reload.
-
-**Header:** `Authorization: Bearer eyJhbG...`
-
-**Response:**
-```json
-{
-  "address": "0xABC...",
-  "role": "admin" | "user",
-  "expires_at": "2026-03-14T12:00:00Z"
-}
-```
-
-#### POST /auth/logout
-
-Invalidate JWT server-side. Frontend also clears localStorage and disconnects wallet.
-
-**Header:** `Authorization: Bearer eyJhbG...`
-
-**Response:**
-```json
-{ "ok": true }
-```
-
-### Frontend Auth State
+### Frontend Role State
 
 ```typescript
-// AuthContext provides:
-interface AuthState {
-  isConnected: boolean;      // wagmi wallet connected
-  isAuthenticated: boolean;  // JWT token valid
-  address: string | null;
+// RoleContext provides:
+interface RoleState {
+  isAuthenticated: boolean;  // code validated successfully
   role: "admin" | "user" | null;
-  token: string | null;
+  accessCode: string | null;
   isLoading: boolean;
-  login: () => Promise<void>;
-  logout: () => Promise<void>;
+  login: (code: string) => Promise<void>;   // validate code, store role
+  logout: () => void;                        // clear code + role
 }
 
-// localStorage keys:
-// "cournot_auth_token"   — JWT string
-// "cournot_auth_address" — address for display
-// "cournot_auth_role"    — role for quick UI checks
+// localStorage keys (extends existing pattern):
+// "playground_code"     — access code (EXISTING, reused)
+// "cournot_role"        — role for quick UI checks
 ```
 
-**Page load restoration:** Check localStorage for token → `GET /auth/me` to validate → restore or clear.
+**Page load restoration:** Check localStorage for `playground_code` → if found, call `GET /auth/role?code={code}` to validate and get role → restore or clear.
 
-### JWT Expiration Handling
+**RoleProvider** is a `"use client"` component nested inside the existing `ThemeProvider` in the root layout (same pattern as how `ThemeProvider` is already used).
 
-When the JWT expires mid-session:
-- Any API call returning error code `4010` triggers: clear auth state from localStorage, show toast "Session expired, please reconnect", reset `AuthContext` to logged-out state.
-- Proactive check: on each API call, compare `expires_at` against current time. If within 5 minutes of expiry, show a warning toast. No refresh token mechanism — user must re-authenticate via wallet signature.
+**Playground integration:** The existing playground page manages its own `accessCode` state and reads/writes `playground_code` in localStorage directly. To avoid state desynchronization, the playground must be refactored to use the `useRole()` hook for its access code instead of managing its own local state. The `callApi` helper should read the code from `RoleContext`.
+
+### Code Guard Pattern for Admin Endpoints
+
+All admin API calls include the code. Two patterns depending on HTTP method:
+
+- **GET requests:** `?code={code}` as query parameter
+- **POST/PUT requests:** `"code": "{code}"` in the request body
+
+The backend validates the code on every request and checks that the associated role is `"admin"`. This is stateless — no sessions or tokens.
 
 ### Test Mode
 
 When `NEXT_PUBLIC_ENABLE_TEST_AUTH=true`:
-- "Connect Wallet" bypasses MetaMask entirely
-- Auto-sets address to `0xTEST...1234`
-- Skips challenge/signature flow
-- Calls `/auth/verify` with a special test signature
-- Backend recognizes test mode and returns admin JWT
-- All subsequent API calls work normally with the test JWT
-
-**Security:** `NEXT_PUBLIC_ENABLE_TEST_AUTH` must never be `true` in production builds. Defense in depth: the backend must also have its own `TEST_AUTH_ENABLED` flag — the test signature is only accepted when both frontend and backend flags are enabled.
+- Auto-sets a hardcoded test code in localStorage
+- Skips the code entry prompt
+- `GET /auth/role` returns `"admin"` for the test code
+- All subsequent API calls work normally with the test code
 
 ## 2. Admin Market Management
 
@@ -179,7 +141,7 @@ interface AdminMarket {
   resolution: Resolution | null; // null until resolved
   por_result: RunSummary | null; // raw PoR result if triggered
 
-  created_by: string;            // admin address
+  created_by: string;            // code identifier or label
   created_at: string;            // ISO 8601
   updated_at: string;            // ISO 8601
 }
@@ -190,7 +152,7 @@ type AlertLevel = "none" | "low" | "medium" | "high" | "critical";
 interface Resolution {
   outcome: string;               // "YES" | "NO" | "INVALID" | custom
   confidence: number;            // 0-1
-  resolved_by: string;           // admin address
+  resolved_by: string;           // code identifier or label
   resolved_at: string;           // ISO 8601
   method: "por" | "manual" | "por_modified";
   por_root: string | null;
@@ -206,19 +168,23 @@ ACTIVE → MONITORING → ALERTED → RESOLVING → RESOLVED
   (added)   (after       (signal    (admin      (confirmed)
              start_time)  detected)  reviewing)
 
-Any non-terminal status → CANCELLED (admin removes market from monitoring)
-                        → EXPIRED   (past resolve_time, no resolution)
+Any non-terminal status → CANCELLED  (via PUT with {status: "CANCELLED"}, no DELETE endpoint)
+                        → EXPIRED    (past resolve_time, no resolution)
 ```
 
 ### Admin API
 
-All admin endpoints require `Authorization: Bearer {jwt}` with role = "admin".
+All admin endpoints require a valid access code with admin role.
+
+- **GET requests:** code passed as `?code={code}` query param
+- **POST/PUT requests:** code included as `"code"` field in request body
 
 #### GET /admin/markets
 
 List markets with filtering and pagination.
 
 **Query params:**
+- `code` — access code (required)
 - `status` — comma-separated: `ALERTED,MONITORING`
 - `alert_level` — comma-separated: `high,critical`
 - `platform` — single value: `polymarket`
@@ -230,10 +196,14 @@ List markets with filtering and pagination.
 **Response:**
 ```json
 {
-  "markets": [AdminMarket],
-  "total": 42,
-  "page_num": 1,
-  "page_size": 20
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "markets": [AdminMarket],
+    "total": 42,
+    "page_num": 1,
+    "page_size": 20
+  }
 }
 ```
 
@@ -244,6 +214,7 @@ Add a new market to be monitored.
 **Request:**
 ```json
 {
+  "code": "access-code-here",
   "title": "Will BTC hit $100k by June 2026?",
   "platform": "polymarket",
   "platform_url": "https://polymarket.com/...",
@@ -257,27 +228,47 @@ Add a new market to be monitored.
 
 **Response (201):**
 ```json
-{ "market": AdminMarket }
+{
+  "code": 0,
+  "msg": "success",
+  "data": { "market": AdminMarket }
+}
 ```
 
 #### GET /admin/markets/:id
 
 Get full market detail including alert info and PoR result.
 
+**Query params:** `?code={code}`
+
 **Response:**
 ```json
-{ "market": AdminMarket }
+{
+  "code": 0,
+  "msg": "success",
+  "data": { "market": AdminMarket }
+}
 ```
 
 #### PUT /admin/markets/:id
 
 Update market metadata. Cannot update once status is RESOLVED.
 
-**Request:** Partial `AdminMarket` fields.
+**Request:**
+```json
+{
+  "code": "access-code-here",
+  ...partial AdminMarket fields
+}
+```
 
 **Response:**
 ```json
-{ "market": AdminMarket }
+{
+  "code": 0,
+  "msg": "success",
+  "data": { "market": AdminMarket }
+}
 ```
 
 #### POST /admin/markets/:id/resolve
@@ -287,6 +278,7 @@ Submit final resolution. Triggers Lark notification + Telegram broadcast.
 **Request:**
 ```json
 {
+  "code": "access-code-here",
   "outcome": "YES",
   "confidence": 0.95,
   "method": "por_modified",
@@ -299,17 +291,21 @@ Submit final resolution. Triggers Lark notification + Telegram broadcast.
 **Response:**
 ```json
 {
-  "market": AdminMarket,
-  "notifications": {
-    "lark": true,
-    "telegram": true
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "market": AdminMarket,
+    "notifications": {
+      "lark": true,
+      "telegram": true
+    }
   }
 }
 ```
 
 **Backend side-effects:**
 - Sets market status to RESOLVED
-- Sends Lark message: "Market [title] resolved as [outcome] by [address]"
+- Sends Lark message: "Market [title] resolved as [outcome] by [resolved_by]"
 - Sends Telegram message to designated group with full evidence + proofs
 
 ### Error Responses
@@ -329,25 +325,32 @@ Error codes (non-zero `code` field in response body; HTTP status also set accord
 | Code | HTTP Status | Meaning |
 |------|-------------|---------|
 | 4000 | 400 | Bad request (validation error) |
-| 4010 | 401 | Unauthorized (no token or expired) |
-| 4030 | 403 | Forbidden (valid token but not admin) |
+| 4030 | 403 | Forbidden (valid code but not admin role) |
 | 4040 | 404 | Not found |
 | 4090 | 409 | Conflict (market already resolved) |
+| 4100 | 401 | Invalid access code (matches existing) |
 | 5000 | 500 | Internal server error |
+
+**Error handling in admin-api.ts:**
+- `4100` → clear code from localStorage, prompt re-entry ("Invalid code, please re-enter")
+- `4030` → show "Admin access required" without clearing the code (code is valid but not admin)
+- Other errors → show generic error toast
 
 ## 3. UI Design
 
 ### Topbar Changes
 
-- Replace placeholder user menu with wallet connect button
-- **Not connected:** Purple "Connect Wallet" button
-- **Connected:** Green dot + truncated address (`0xABC...1234`) + role badge (ADMIN in red) + "Disconnect" button
+- Replace placeholder user menu with auth controls
+- **Not authenticated:** Purple "Enter Code" button (opens code entry dialog, reuses playground pattern)
+- **Authenticated:** Green dot + role badge (ADMIN in red or USER in gray) + "Logout" button
+- Code entry can be shared with the existing playground code — entering a code once authenticates everywhere
 
 ### Sidebar Changes
 
 - Admin section appears conditionally when `role === "admin"`
 - New items under "Admin" heading: "Market Monitor" (`/admin/markets`), "+ Add Market" (`/admin/markets/new`)
 - Admin items styled in red/accent color to distinguish from regular nav
+- Sidebar must import `useRole()` and conditionally append the admin nav group
 
 ### Admin Pages
 
@@ -374,8 +377,8 @@ Error codes (non-zero `code` field in response body; HTTP status also set accord
 
 ### Admin Layout Gate
 
-`/admin/layout.tsx` checks auth state:
-- Not authenticated → redirect to home
+`/admin/layout.tsx` checks role state:
+- Not authenticated (no code) → redirect to home with toast prompting code entry
 - Authenticated but not admin → show "Access Denied" message
 - Admin → render children
 
@@ -383,14 +386,14 @@ Error codes (non-zero `code` field in response body; HTTP status also set accord
 
 When admin clicks "Run Proof of Reasoning":
 
-1. Frontend calls `/api/proxy/step/resolve` directly with JWT `Authorization` header (NOT through the playground's `ai_data` code-wrapping gateway). This means the backend must accept JWT auth on `/step/*` endpoints in addition to the existing access-code auth.
+1. Frontend calls the existing oracle pipeline via the same `ai_data` gateway pattern used by the playground, using the stored access code from `RoleContext`. The `callApi` helper is extracted from the playground into a shared `lib/oracle-api.ts` module and reused by both the playground and the admin PoR trigger.
 2. Shows loading state (reuse `pipeline-progress` component)
 3. On success, maps the raw response through the same transform logic used in the playground to produce a `RunSummary`, then displays it (reuse playground result components)
 4. Pre-fills resolution form: outcome, confidence, por_root from `RunSummary`
 5. If admin modifies outcome or confidence, method auto-changes from `"por"` to `"por_modified"`
 6. Admin clicks "Confirm & Notify" → `POST /admin/markets/:id/resolve`
 
-**Backend requirement:** `/step/*` endpoints must accept `Authorization: Bearer {jwt}` as an alternative to the access-code envelope. When a valid admin JWT is present, skip access-code validation.
+No new oracle API endpoints needed. The existing access code already grants access to `/step/*` endpoints.
 
 ## 5. Notification Pipeline (Backend-Side)
 
@@ -409,7 +412,7 @@ Title: [title]
 Outcome: [YES/NO/INVALID]
 Confidence: [0.94]
 Method: [por/manual/por_modified]
-Resolved by: [0xABC...1234]
+Resolved by: [resolved_by]
 Time: [2026-03-13 15:00 UTC]
 ```
 
@@ -430,7 +433,7 @@ Reasoning:
 [brief reasoning summary]
 
 PoR Root: abc123...
-Resolved by: 0xABC...1234
+Resolved by: [resolved_by]
 Method: por_modified
 Admin notes: [if any]
 ```
@@ -443,8 +446,8 @@ Note: Lark and Telegram integrations are backend-only. Frontend only triggers vi
 
 ```
 lib/
-├── auth.ts                    # AuthContext, useAuth hook, login/logout logic
-├── wagmi-config.ts            # wagmi client config (chains, connectors)
+├── role.ts                    # RoleContext, useRole hook, login/logout logic
+├── oracle-api.ts              # Extracted from playground: callApi, callProxy, InvalidCodeError, toRunSummary
 └── admin-api.ts               # Admin API client (markets CRUD, resolve)
 
 app/
@@ -459,8 +462,9 @@ app/
 
 components/
 ├── auth/
-│   ├── connect-button.tsx     # Wallet connect/disconnect in topbar
-│   └── auth-provider.tsx      # Client component: QueryClientProvider > WagmiProvider > AuthContext.Provider
+│   ├── code-entry-button.tsx  # Code entry trigger in topbar (opens dialog)
+│   ├── code-entry-dialog.tsx  # Code entry modal (reuses playground pattern)
+│   └── role-provider.tsx      # RoleContext provider (wraps app)
 └── admin/
     ├── market-table.tsx       # Market list table with filters
     ├── market-form.tsx        # Add/edit market form
@@ -472,13 +476,13 @@ components/
 ### Modified Files
 
 ```
-lib/types.ts                         # + AdminMarket, Resolution, AlertLevel types
-app/layout.tsx                       # + wrap with WagmiProvider + AuthProvider
-app/api/proxy/[...path]/route.ts     # + forward Authorization header, + add PUT handler
-components/layout/sidebar.tsx        # + admin nav items (conditional)
-components/layout/topbar.tsx         # + connect button (replace placeholder)
-package.json                         # + wagmi, viem, @tanstack/react-query
-.env.example                         # + NEXT_PUBLIC_ENABLE_TEST_AUTH, NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+lib/types.ts                         # + AdminMarket, Resolution, AlertLevel types (under "// --- Admin Market Monitoring ---" section)
+app/layout.tsx                       # + wrap with RoleProvider (inside ThemeProvider)
+app/playground/page.tsx              # Refactor to use useRole() for access code instead of local state; extract callApi/toRunSummary to lib/oracle-api.ts
+app/api/proxy/[...path]/route.ts     # + add PUT handler (mirrors POST: same timeout, body passthrough)
+components/layout/sidebar.tsx        # + admin nav items (conditional on role via useRole())
+components/layout/topbar.tsx         # + code entry button (replace placeholder user menu)
+.env.example                         # + NEXT_PUBLIC_ENABLE_TEST_AUTH
 ```
 
 ## 7. Environment Variables
@@ -489,14 +493,9 @@ UPSTREAM_API_BASE=https://dev-interface.cournot.ai/play/polymarket
 NEXT_PUBLIC_ENABLE_PLAYGROUND_LOCALHOST_MODE=false
 
 # New
-NEXT_PUBLIC_ENABLE_TEST_AUTH=false          # true → skip wallet, auto-admin login
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=      # WalletConnect v2 project ID (optional)
+NEXT_PUBLIC_ENABLE_TEST_AUTH=false     # true → auto-set test code, skip code entry
 ```
 
 ## 8. Dependencies
 
-```
-wagmi@^2           # React hooks for EVM wallets
-viem@^2            # TypeScript EVM client (wagmi peer dep)
-@tanstack/react-query@^5  # Async state management (wagmi peer dep)
-```
+No new npm dependencies required. The existing codebase has everything needed.
