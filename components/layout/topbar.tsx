@@ -1,9 +1,16 @@
 "use client";
 
-import { Search, Bell, User } from "lucide-react";
+import { useState } from "react";
+import { Search, Bell, LogIn, LogOut } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { useRole } from "@/lib/role";
+import { CodeEntryDialog } from "@/components/auth/code-entry-dialog";
+import { Badge } from "@/components/ui/badge";
 
 export function Topbar() {
+  const { isAuthenticated, role, login, logout } = useRole();
+  const [codeDialogOpen, setCodeDialogOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/80 backdrop-blur-sm px-6">
       {/* Left: Logo */}
@@ -41,10 +48,45 @@ export function Topbar() {
         <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Bell className="h-4 w-4" />
         </button>
-        <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <User className="h-4 w-4" />
-        </button>
+
+        {isAuthenticated ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              {role === "admin" ? (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                  ADMIN
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  USER
+                </Badge>
+              )}
+            </div>
+            <button
+              onClick={logout}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setCodeDialogOpen(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <LogIn className="h-3.5 w-3.5" />
+            Enter Code
+          </button>
+        )}
       </div>
+
+      <CodeEntryDialog
+        open={codeDialogOpen}
+        onOpenChange={setCodeDialogOpen}
+        onSubmit={login}
+      />
     </header>
   );
 }
