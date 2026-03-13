@@ -338,3 +338,47 @@ export function getMatchStatus(c: MarketCase): MatchStatus {
     ? "MATCH"
     : "MISMATCH";
 }
+
+// ─── Admin Market Monitoring ───────────────────────────────────────────────
+
+export type MarketStatus =
+  | "ACTIVE"
+  | "MONITORING"
+  | "ALERTED"
+  | "RESOLVING"
+  | "RESOLVED"
+  | "EXPIRED"
+  | "CANCELLED";
+
+export type AlertLevel = "none" | "low" | "medium" | "high" | "critical";
+
+export interface Resolution {
+  outcome: string;
+  confidence: number;
+  resolved_by: string;
+  resolved_at: string;
+  method: "por" | "manual" | "por_modified";
+  por_root: string | null;
+  admin_notes: string | null;
+  evidence_summary: string | null;
+}
+
+export interface AdminMarket {
+  id: string;
+  title: string;
+  platform: string;
+  platform_url: string | null;
+  description: string;
+  question: string;
+  start_time: string;
+  end_time: string;
+  resolve_time: string;
+  status: MarketStatus;
+  alert_level: AlertLevel;
+  alert_reason: string | null;
+  resolution: Resolution | null;
+  por_result: RunSummary | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
