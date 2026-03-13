@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/layout/theme-provider";
 import { RouteTracker } from "@/components/layout/route-tracker";
 import { Toaster } from "sonner";
 import { GA_ID } from "@/lib/analytics";
+import { RoleProvider } from "@/components/auth/role-provider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -51,25 +52,27 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-[family-name:var(--font-geist-sans)] antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <RouteTracker />
-          <Topbar />
-          <div className="flex">
-            <Sidebar />
-            <main className="ml-52 flex-1 min-h-[calc(100vh-3.5rem)]">
-              <div className="p-6 max-w-[1400px] mx-auto">{children}</div>
-            </main>
-          </div>
-          <Toaster
-            theme="dark"
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: "hsl(228 14% 10%)",
-                border: "1px solid hsl(224 12% 16%)",
-                color: "hsl(210 20% 96%)",
-              },
-            }}
-          />
+          <RoleProvider>
+            <RouteTracker />
+            <Topbar />
+            <div className="flex">
+              <Sidebar />
+              <main className="ml-52 flex-1 min-h-[calc(100vh-3.5rem)]">
+                <div className="p-6 max-w-[1400px] mx-auto">{children}</div>
+              </main>
+            </div>
+            <Toaster
+              theme="dark"
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "hsl(228 14% 10%)",
+                  border: "1px solid hsl(224 12% 16%)",
+                  color: "hsl(210 20% 96%)",
+                },
+              }}
+            />
+          </RoleProvider>
         </ThemeProvider>
       </body>
     </html>
