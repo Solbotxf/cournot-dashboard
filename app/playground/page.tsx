@@ -24,10 +24,9 @@ import {
   trackPlaygroundReset,
   trackPlaygroundStepComplete,
 } from "@/lib/analytics";
+import { useRole } from "@/lib/role";
 
 // ─── Code-gated API helper ──────────────────────────────────────────────────
-
-const STORAGE_KEY = "playground_code";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -48,37 +47,27 @@ type Phase = "input" | "prompting" | "prompted" | "resolving" | "resolved";
 
 export default function PlaygroundPage() {
   // Access code
-  const [accessCode, setAccessCode] = useState<string | null>(null);
-  const [codeLoaded, setCodeLoaded] = useState(false);
+  const { isAuthenticated, accessCode, login, logout, isLoading: codeLoading } = useRole();
+  const codeLoaded = !codeLoading;
   const [codeInput, setCodeInput] = useState("");
 
-  // Load code from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setAccessCode(stored);
-    setCodeLoaded(true);
-  }, []);
-
   const handleInvalidCode = useCallback(() => {
-    setAccessCode(null);
-    localStorage.removeItem(STORAGE_KEY);
+    logout();
     toast.error("Invalid access code", { description: "Please re-enter your code." });
-  }, []);
-
+  }, [logout]);
 
   function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     const code = codeInput.trim();
     if (!code) return;
-    localStorage.setItem(STORAGE_KEY, code);
-    setAccessCode(code);
-    setCodeInput("");
-    trackPlaygroundCodeEntered(code);
+    login(code).then(() => {
+      setCodeInput("");
+      trackPlaygroundCodeEntered(code);
+    }).catch(() => {});
   }
 
   function handleChangeCode() {
-    setAccessCode(null);
-    localStorage.removeItem(STORAGE_KEY);
+    logout();
   }
 
   // Phase
