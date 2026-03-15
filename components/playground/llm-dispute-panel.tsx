@@ -62,18 +62,22 @@ interface LLMDisputePanelProps {
   artifacts: ResolutionArtifacts;
   onSubmit: (payload: any) => Promise<DisputeResponse>;
   disabled?: boolean;
+  /** Override collectors to use instead of artifacts.collectors_used */
+  collectors?: string[];
 }
 
 export function LLMDisputePanel({
   artifacts,
   onSubmit,
   disabled = false,
+  collectors,
 }: LLMDisputePanelProps) {
   const [reasonCode, setReasonCode] = useState<LLMDisputeReasonCode>("EVIDENCE_MISREAD");
   const [message, setMessage] = useState("");
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<DisputeResponse | null>(null);
+  const [beforeSnapshot, setBeforeSnapshot] = useState<{ verdict: any; reasoning_trace: any } | null>(null);
 
   const currentReason = REASON_OPTIONS.find((r) => r.value === reasonCode);
 
@@ -137,11 +141,14 @@ export function LLMDisputePanel({
     if (artifacts.tool_plan) {
       payload.tool_plan = artifacts.tool_plan;
     }
-    if (artifacts.collectors_used && artifacts.collectors_used.length > 0) {
-      payload.collectors = artifacts.collectors_used;
+    const collectorsToUse = collectors && collectors.length > 0 ? collectors : artifacts.collectors_used;
+    if (collectorsToUse && collectorsToUse.length > 0) {
+      payload.collectors = collectorsToUse;
     }
 
     setSubmitting(true);
+    // Snapshot current values before onSubmit triggers parent state updates
+    setBeforeSnapshot({ verdict: artifacts.verdict, reasoning_trace: artifacts.reasoning_trace });
     try {
       const res = await onSubmit(payload);
       setResult(res);
@@ -313,11 +320,11 @@ export function LLMDisputePanel({
       </Card>
 
       {/* Result diff */}
-      {result && (
+      {result && beforeSnapshot && (
         <DisputeDiff
-          beforeVerdict={artifacts.verdict}
+          beforeVerdict={beforeSnapshot.verdict}
           afterVerdict={result.artifacts?.verdict}
-          beforeReasoning={artifacts.reasoning_trace}
+          beforeReasoning={beforeSnapshot.reasoning_trace}
           afterReasoning={result.artifacts?.reasoning_trace}
         />
       )}

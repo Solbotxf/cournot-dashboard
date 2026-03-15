@@ -41,6 +41,7 @@ export interface DisputeResponse {
   artifacts: {
     prompt_spec: any;
     evidence_bundle: any;
+    evidence_bundles?: any[];
     reasoning_trace: any;
     verdict: any;
   };
@@ -53,6 +54,8 @@ interface DisputePanelProps {
   disabled?: boolean;
   defaultCaseId?: string;
   onResult?: (result: DisputeResponse, meta: { before: ResolutionArtifacts; evidenceBundleIndex: number }) => void;
+  /** Override collectors to use instead of artifacts.collectors_used */
+  collectors?: string[];
 }
 
 export function DisputePanel({
@@ -61,6 +64,7 @@ export function DisputePanel({
   disabled = false,
   defaultCaseId,
   onResult,
+  collectors,
 }: DisputePanelProps) {
   const [reasonCode, setReasonCode] = useState<DisputeReasonCode>("REASONING_ERROR");
   const [targetArtifact, setTargetArtifact] = useState<DisputeTargetArtifact>("verdict");
@@ -135,7 +139,7 @@ export function DisputePanel({
       evidence_bundle: rerunCollect ? null : selectedEvidenceBundle,
       reasoning_trace: rerunCollect ? null : (targetArtifact === "verdict" || targetArtifact === "reasoning_trace" ? artifacts.reasoning_trace : null),
       tool_plan: rerunCollect ? (artifacts.tool_plan ?? null) : null,
-      collectors: rerunCollect ? (artifacts.collectors_used ?? null) : null,
+      collectors: rerunCollect ? (collectors && collectors.length > 0 ? collectors : artifacts.collectors_used ?? null) : null,
       patch:
         (evidenceItemsAppend && evidenceItemsAppend.length > 0) || (promptSpecOverride && Object.keys(promptSpecOverride).length > 0)
           ? {

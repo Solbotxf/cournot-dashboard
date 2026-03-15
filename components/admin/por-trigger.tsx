@@ -422,6 +422,15 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
   function handleDisputeResult(response: DisputeResponse) {
     if (!response.artifacts) return;
     const a = response.artifacts;
+    const collectorsUsed = selectedCollectors.length > 0 ? selectedCollectors : resolutionArtifacts?.collectors_used ?? [];
+
+    // Prefer evidence_bundles (plural array) over evidence_bundle (singular)
+    const newEvidenceBundles = (a.evidence_bundles && a.evidence_bundles.length > 0)
+      ? a.evidence_bundles
+      : a.evidence_bundle
+        ? [a.evidence_bundle]
+        : resolutionArtifacts?.evidence_bundles ?? [];
+
     const newRaw: PorRawResult = {
       ok: true, errors: [],
       outcome: a.verdict?.outcome ?? resolutionArtifacts?.verdict?.outcome ?? "UNKNOWN",
@@ -432,8 +441,8 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
         verdict: a.verdict ?? resolutionArtifacts?.verdict,
         por_bundle: resolutionArtifacts?.por_bundle,
         reasoning_trace: a.reasoning_trace ?? resolutionArtifacts?.reasoning_trace,
-        evidence_bundles: a.evidence_bundle ? [a.evidence_bundle] : resolutionArtifacts?.evidence_bundles ?? [],
-        collectors_used: resolutionArtifacts?.collectors_used ?? [],
+        evidence_bundles: newEvidenceBundles,
+        collectors_used: collectorsUsed,
       },
     };
     onRawResult?.(JSON.stringify(newRaw));
@@ -444,7 +453,8 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
         ...prev,
         verdict: a.verdict ?? prev.verdict,
         reasoning_trace: a.reasoning_trace ?? prev.reasoning_trace,
-        evidence_bundles: a.evidence_bundle ? [a.evidence_bundle] : prev.evidence_bundles,
+        evidence_bundles: newEvidenceBundles,
+        collectors_used: collectorsUsed,
       };
     });
   }
@@ -455,7 +465,7 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
   // ─── Settings panel (rendered inside Rerun & Dispute tabs) ──────────────
 
   const settingsPanel = (
-    <details className="rounded-lg border border-border/50 bg-muted/10">
+    <details open className="rounded-lg border border-border/50 bg-muted/10">
       <summary className="p-3 cursor-pointer text-xs font-medium flex items-center gap-2">
         <Settings className="h-3.5 w-3.5 text-muted-foreground" />
         Pipeline Settings
@@ -598,6 +608,7 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
               </summary>
               <LLMDisputePanel
                 artifacts={resolutionArtifacts}
+                collectors={selectedCollectors.length > 0 ? selectedCollectors : undefined}
                 onSubmit={async (payload) => {
                   const res = await handleLLMDisputeSubmit(payload);
                   handleDisputeResult(res);
@@ -613,6 +624,7 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
               </summary>
               <DisputePanel
                 artifacts={resolutionArtifacts}
+                collectors={selectedCollectors.length > 0 ? selectedCollectors : undefined}
                 onSubmit={async (payload) => {
                   const res = await handleDisputeSubmit(payload);
                   handleDisputeResult(res);
