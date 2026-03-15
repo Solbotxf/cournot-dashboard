@@ -21,11 +21,8 @@ export default function MarketDetailPage() {
     if (!accessCode || !params.id) return;
     setLoading(true);
     try {
-      const data = await fetchMarket(accessCode, params.id);
-      setMarket(data.market);
-      if (data.market.por_result) {
-        setPorResult(data.market.por_result);
-      }
+      const m = await fetchMarket(accessCode, Number(params.id));
+      setMarket(m);
     } catch {
       // Error handled by admin-api
     } finally {
@@ -51,7 +48,8 @@ export default function MarketDetailPage() {
     );
   }
 
-  const isResolvable = ["ALERTED", "MONITORING", "ACTIVE"].includes(market.status);
+  const isResolved = !!market.resolve_time;
+  const hasExistingAiResult = !!market.ai_result;
 
   return (
     <div className="space-y-6">
@@ -62,38 +60,18 @@ export default function MarketDetailPage() {
 
       <MarketDetail market={market} />
 
-      {isResolvable && (
+      {!isResolved && (
         <>
           <PorTrigger
-            question={market.question}
+            question={market.title}
             onResult={setPorResult}
-            newsUrl={`https://news.google.com/search?q=${encodeURIComponent(market.question)}`}
           />
-          <ResolveForm marketId={market.id} porResult={porResult} />
+          <ResolveForm
+            marketId={market.id}
+            hasExistingAiResult={hasExistingAiResult}
+            porResult={porResult}
+          />
         </>
-      )}
-
-      {market.status === "RESOLVED" && market.resolution && (
-        <div className="rounded-lg border border-border bg-muted/30 p-6">
-          <p className="text-sm font-medium mb-3">Resolution</p>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-xs text-muted-foreground">Outcome</span>
-              <p className="font-bold">{market.resolution.outcome}</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Confidence</span>
-              <p>{(market.resolution.confidence * 100).toFixed(0)}%</p>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Method</span>
-              <p>{market.resolution.method}</p>
-            </div>
-          </div>
-          {market.resolution.admin_notes && (
-            <p className="text-sm text-muted-foreground mt-3">{market.resolution.admin_notes}</p>
-          )}
-        </div>
       )}
     </div>
   );

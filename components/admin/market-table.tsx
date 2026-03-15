@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/lib/role";
 import { fetchMarkets } from "@/lib/admin-api";
-import type { AdminMarket, MarketStatus, AlertLevel } from "@/lib/types";
+import type { AdminMarket } from "@/lib/types";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -13,60 +13,32 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STATUS_TABS: { label: string; value: string }[] = [
-  { label: "Alerted", value: "ALERTED" },
-  { label: "Monitoring", value: "MONITORING" },
-  { label: "Active", value: "ACTIVE" },
-  { label: "Resolved", value: "RESOLVED" },
-  { label: "All", value: "" },
+type SortField = "created_time" | "end_time" | "start_time";
+
+const SORT_OPTIONS: { label: string; value: SortField }[] = [
+  { label: "Newest", value: "created_time" },
+  { label: "End Time", value: "end_time" },
+  { label: "Start Time", value: "start_time" },
 ];
 
-function statusColor(s: MarketStatus): string {
-  switch (s) {
-    case "ALERTED": return "text-amber-400";
-    case "MONITORING": return "text-green-400";
-    case "ACTIVE": return "text-blue-400";
-    case "RESOLVING": return "text-purple-400";
-    case "RESOLVED": return "text-muted-foreground";
-    case "EXPIRED": return "text-muted-foreground/60";
-    case "CANCELLED": return "text-muted-foreground/60";
-    default: return "";
-  }
-}
-
-function alertBadge(level: AlertLevel) {
-  if (level === "none") return <span className="text-muted-foreground">—</span>;
-  const colors: Record<string, string> = {
-    low: "bg-yellow-500/10 text-yellow-500",
-    medium: "bg-orange-500/10 text-orange-500",
-    high: "bg-red-500/10 text-red-500",
-    critical: "bg-red-600/20 text-red-400",
-  };
-  return (
-    <Badge variant="outline" className={cn("text-[10px]", colors[level])}>
-      {level.toUpperCase()}
-    </Badge>
-  );
-}
-
-function platformBadge(platform: string) {
-  const colors: Record<string, string> = {
-    polymarket: "bg-blue-500/10 text-blue-400",
-    kalshi: "bg-green-500/10 text-green-400",
-    limitless: "bg-purple-500/10 text-purple-400",
-    custom: "bg-muted text-muted-foreground",
-  };
-  return (
-    <Badge variant="outline" className={cn("text-[10px]", colors[platform] ?? colors.custom)}>
-      {platform}
-    </Badge>
-  );
-}
-
 function formatDate(iso: string) {
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });
+}
+
+function statusBadge(market: AdminMarket) {
+  if (market.resolve_time) {
+    return <Badge variant="outline" className="text-[10px] text-muted-foreground">Resolved</Badge>;
+  }
+  if (market.ai_outcome) {
+    return <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-400">Has AI Result</Badge>;
+  }
+  if (market.ai_prompt) {
+    return <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400">Prompted</Badge>;
+  }
+  return <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-400">Active</Badge>;
 }
 
 export function MarketTable() {
@@ -76,7 +48,7 @@ export function MarketTable() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("ALERTED");
+  const [sort, setSort] = useState<SortField>("created_time");
   const pageSize = 20;
 
   const load = useCallback(async () => {
@@ -84,11 +56,10 @@ export function MarketTable() {
     setLoading(true);
     try {
       const data = await fetchMarkets(accessCode, {
-        status: statusFilter || undefined,
         page_num: page,
         page_size: pageSize,
-        sort: "resolve_time",
-        order: "asc",
+        sort,
+        order: "desc",
       });
       setMarkets(data.markets);
       setTotal(data.total);
@@ -97,7 +68,7 @@ export function MarketTable() {
     } finally {
       setLoading(false);
     }
-  }, [accessCode, statusFilter, page]);
+  }, [accessCode, sort, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -105,20 +76,20 @@ export function MarketTable() {
 
   return (
     <div className="space-y-4">
-      {/* Status tabs */}
+      {/* Sort tabs */}
       <div className="flex gap-1 rounded-lg bg-muted/30 p-1 w-fit">
-        {STATUS_TABS.map((tab) => (
+        {SORT_OPTIONS.map((opt) => (
           <button
-            key={tab.value}
-            onClick={() => { setStatusFilter(tab.value); setPage(1); }}
+            key={opt.value}
+            onClick={() => { setSort(opt.value); setPage(1); }}
             className={cn(
               "px-3 py-1 rounded-md text-xs font-medium transition-colors",
-              statusFilter === tab.value
+              sort === opt.value
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {tab.label}
+            {opt.label}
           </button>
         ))}
       </div>
@@ -128,11 +99,11 @@ export function MarketTable() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Platform</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Alert</TableHead>
-                <TableHead>Resolve By</TableHead>
+                <TableHead>AI Outcome</TableHead>
+                <TableHead>End Time</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -155,20 +126,26 @@ export function MarketTable() {
                     key={m.id}
                     className={cn(
                       "cursor-pointer",
-                      m.status === "ALERTED" && "bg-red-500/5"
+                      m.ai_outcome && !m.resolve_time && "bg-purple-500/5"
                     )}
                     onClick={() => router.push(`/admin/markets/${m.id}`)}
                   >
+                    <TableCell className="text-muted-foreground text-xs font-mono">
+                      {m.id}
+                    </TableCell>
                     <TableCell className="font-medium max-w-[300px] truncate">
                       {m.title}
                     </TableCell>
-                    <TableCell>{platformBadge(m.platform)}</TableCell>
+                    <TableCell>{statusBadge(m)}</TableCell>
                     <TableCell>
-                      <span className={statusColor(m.status)}>{m.status}</span>
+                      {m.ai_outcome ? (
+                        <span className="font-semibold">{m.ai_outcome}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                    <TableCell>{alertBadge(m.alert_level)}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {formatDate(m.resolve_time)}
+                      {formatDate(m.end_time)}
                     </TableCell>
                     <TableCell className="text-right">
                       <button

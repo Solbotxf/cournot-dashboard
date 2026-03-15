@@ -10,26 +10,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-const PLATFORMS = ["polymarket", "kalshi", "limitless", "custom"];
-
 export function MarketForm() {
   const { accessCode } = useRole();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const [title, setTitle] = useState("");
-  const [platform, setPlatform] = useState("polymarket");
   const [platformUrl, setPlatformUrl] = useState("");
-  const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [resolveTime, setResolveTime] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!accessCode) return;
-    if (!title.trim() || !question.trim() || !startTime || !endTime || !resolveTime) {
+    if (!title.trim() || !description.trim() || !startTime || !endTime) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -37,13 +32,10 @@ export function MarketForm() {
     try {
       await createMarket(accessCode, {
         title: title.trim(),
-        platform,
-        platform_url: platformUrl.trim() || undefined,
         description: description.trim(),
-        question: question.trim(),
+        platform_url: platformUrl.trim() || undefined,
         start_time: new Date(startTime).toISOString(),
         end_time: new Date(endTime).toISOString(),
-        resolve_time: new Date(resolveTime).toISOString(),
       });
       toast.success("Market added");
       router.push("/admin/markets");
@@ -63,36 +55,17 @@ export function MarketForm() {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Will BTC hit $100k by June 2026?" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Platform *</label>
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
-              >
-                {PLATFORMS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Platform URL</label>
-              <Input value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} placeholder="https://..." />
-            </div>
-          </div>
-
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Question (for PoR resolution) *</label>
-            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="The exact resolvable question..." />
-          </div>
-
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Description *</label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detailed resolution criteria..." rows={3} />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Platform URL</label>
+            <Input value={platformUrl} onChange={(e) => setPlatformUrl(e.target.value)} placeholder="https://polymarket.com/..." />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Start Time *</label>
               <Input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
@@ -100,10 +73,6 @@ export function MarketForm() {
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">End Time *</label>
               <Input type="datetime-local" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Resolve Time *</label>
-              <Input type="datetime-local" value={resolveTime} onChange={(e) => setResolveTime(e.target.value)} />
             </div>
           </div>
 

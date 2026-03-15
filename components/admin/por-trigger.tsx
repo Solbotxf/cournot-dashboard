@@ -12,10 +12,9 @@ import { toast } from "sonner";
 interface PorTriggerProps {
   question: string;
   onResult: (result: RunSummary) => void;
-  newsUrl?: string;
 }
 
-export function PorTrigger({ question, onResult, newsUrl }: PorTriggerProps) {
+export function PorTrigger({ question, onResult }: PorTriggerProps) {
   const { accessCode } = useRole();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RunSummary | null>(null);
@@ -53,16 +52,6 @@ export function PorTrigger({ question, onResult, newsUrl }: PorTriggerProps) {
           )}
           {loading ? "Running PoR…" : "Run Proof of Reasoning"}
         </button>
-        {newsUrl && (
-          <a
-            href={newsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-9 rounded-lg border border-border px-4 text-sm text-muted-foreground transition-colors hover:bg-accent inline-flex items-center gap-2"
-          >
-            Check News Manually
-          </a>
-        )}
       </div>
 
       {result && (

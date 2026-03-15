@@ -8,16 +8,20 @@ const TEST_AUTH = process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH === "true";
 const TEST_CODE = "__test_admin_code__";
 
 async function fetchRole(code: string): Promise<"admin" | "user"> {
-  const res = await fetch(`/api/proxy/auth/role?code=${encodeURIComponent(code)}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const res = await fetch("/api/proxy/markets/is_admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `HTTP ${res.status}`);
+  }
   const json = await res.json();
-  if (json.code === 4100) {
-    throw new Error("Invalid access code");
+  if (json.error) {
+    throw new Error(typeof json.error === "string" ? json.error : "Invalid code");
   }
-  if (json.code !== 0) {
-    throw new Error(json.msg || "Failed to fetch role");
-  }
-  return json.data?.role ?? "user";
+  return json.is_admin ? "admin" : "user";
 }
 
 export function RoleProvider({ children }: { children: ReactNode }) {
