@@ -1,95 +1,633 @@
 "use client";
 
-import { useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { useRole } from "@/lib/role";
-import { callApi, toRunSummary } from "@/lib/oracle-api";
-import type { RunSummary } from "@/lib/types";
-import { Card, CardContent } from "@/components/ui/card";
+import { callApi, InvalidCodeError, buildRunSummary } from "@/lib/oracle-api";
+import type { RunSummary, TemporalConstraint, QualityScorecard } from "@/lib/types";
+import type { ResolutionArtifacts, DisputeResponse } from "@/components/playground/dispute-panel";
+import { DisputePanel } from "@/components/playground/dispute-panel";
+import { LLMDisputePanel } from "@/components/playground/llm-dispute-panel";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Loader2, Sparkles, CheckCircle, Circle, Settings, Minus, Plus,
+} from "lucide-react";
 import { toast } from "sonner";
+
+// ─── Pipeline types ──────────────────────────────────────────────────────────
+
+type StepId = "collect" | "quality_check" | "audit" | "judge" | "bundle";
+type StepStatus = "pending" | "running" | "completed" | "error";
+
+interface PipelineStep {
+  id: StepId;
+  label: string;
+  status: StepStatus;
+  detail?: string;
+}
+
+function createSteps(): PipelineStep[] {
+  return [
+    { id: "collect", label: "Collect Evidence", status: "pending" },
+    { id: "quality_check", label: "Quality Check", status: "pending" },
+    { id: "audit", label: "Audit & Reasoning", status: "pending" },
+    { id: "judge", label: "Judge Verdict", status: "pending" },
+    { id: "bundle", label: "Bundle Proof", status: "pending" },
+  ];
+}
+
+function StepIndicator({ step }: { step: PipelineStep }) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {step.status === "running" ? (
+        <Loader2 className="h-3 w-3 animate-spin text-primary" />
+      ) : step.status === "completed" ? (
+        <CheckCircle className="h-3 w-3 text-green-400" />
+      ) : step.status === "error" ? (
+        <Circle className="h-3 w-3 text-red-400" />
+      ) : (
+        <Circle className="h-3 w-3 text-muted-foreground/30" />
+      )}
+      <span className={step.status === "running" ? "text-primary font-medium" : step.status === "completed" ? "text-green-400" : step.status === "error" ? "text-red-400" : "text-muted-foreground/50"}>
+        {step.label}
+      </span>
+      {step.detail && (
+        <span className="text-muted-foreground/70 truncate max-w-[300px]">{step.detail}</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Capabilities types ──────────────────────────────────────────────────────
+
+interface ProviderInfo {
+  provider: string;
+  default_model: string;
+}
+
+interface CollectorAgent {
+  name: string;
+  description?: string;
+  is_fallback?: boolean;
+}
+
+interface CollectorStep {
+  step: string;
+  agents: CollectorAgent[];
+}
+
+interface CollectorInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
+// ─── Raw result shape ────────────────────────────────────────────────────────
+
+interface PorRawResult {
+  ok: boolean;
+  errors: string[];
+  outcome: string;
+  confidence: number;
+  por_root: string;
+  market_id: string;
+  artifacts: {
+    verdict: any;
+    por_bundle: any;
+    reasoning_trace: any;
+    evidence_bundles: any[];
+    collectors_used: string[];
+  };
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 interface PorTriggerProps {
   question: string;
-  onResult: (result: RunSummary) => void;
+  aiPrompt?: string;
+  aiResult?: string;
+  onResult: (summary: RunSummary) => void;
+  onRawResult?: (raw: string) => void;
+  /** Content rendered inside the "Resolve" tab */
+  resolveContent?: ReactNode;
 }
 
-export function PorTrigger({ question, onResult }: PorTriggerProps) {
+export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult, resolveContent }: PorTriggerProps) {
   const { accessCode } = useRole();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<RunSummary | null>(null);
+  const [steps, setSteps] = useState<PipelineStep[]>(createSteps());
+  const [done, setDone] = useState(false);
+  const [skipQualityCheck, setSkipQualityCheck] = useState(false);
 
+  // ── Capabilities state ──
+  const [availableCollectors, setAvailableCollectors] = useState<CollectorInfo[]>([]);
+  const [collectorCounts, setCollectorCounts] = useState<Record<string, number>>({});
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState("");
+
+  // ── Resolution artifacts for dispute ──
+  const [resolutionArtifacts, setResolutionArtifacts] = useState<ResolutionArtifacts | null>(null);
+
+  // ── Parse existing ai_result into initial ResolutionArtifacts ──
+  const initialArtifacts = useMemo<ResolutionArtifacts | null>(() => {
+    if (!aiResult) return null;
+    try {
+      const parsed = JSON.parse(aiResult);
+      const arts = parsed.artifacts ?? parsed;
+      if (!arts.verdict && !parsed.outcome) return null;
+
+      let promptSpec: any = null;
+      let toolPlan: any = null;
+      if (aiPrompt) {
+        try {
+          const p = JSON.parse(aiPrompt);
+          promptSpec = p.prompt_spec ?? p;
+          toolPlan = p.tool_plan ?? null;
+        } catch { /* ignore */ }
+      }
+
+      return {
+        prompt_spec: arts.prompt_spec ?? promptSpec,
+        tool_plan: toolPlan,
+        collectors_used: arts.collectors_used ?? [],
+        evidence_bundles: arts.evidence_bundles ?? [],
+        reasoning_trace: arts.reasoning_trace ?? null,
+        verdict: arts.verdict ?? { outcome: parsed.outcome, confidence: parsed.confidence },
+        por_bundle: arts.por_bundle ?? null,
+        quality_scorecard: arts.quality_scorecard ?? null,
+        temporal_constraint: arts.temporal_constraint ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }, [aiResult, aiPrompt]);
+
+  useEffect(() => {
+    if (initialArtifacts && !resolutionArtifacts && !done) {
+      setResolutionArtifacts(initialArtifacts);
+    }
+  }, [initialArtifacts, resolutionArtifacts, done]);
+
+  // Derive selectedCollectors from counts
+  const selectedCollectors = Object.entries(collectorCounts).flatMap(([id, count]) =>
+    Array(count).fill(id)
+  );
+
+  // ── Fetch capabilities on mount ──
+  const handleInvalidCode = useCallback(() => {
+    toast.error("Invalid access code");
+  }, []);
+
+  useEffect(() => {
+    if (!accessCode) return;
+
+    callApi(accessCode, "/capabilities", {}, "GET")
+      .then((data) => {
+        if (Array.isArray(data.providers)) {
+          setProviders(data.providers);
+        }
+        if (Array.isArray(data.steps)) {
+          const collectorStep = data.steps.find(
+            (s: CollectorStep) => s.step === "collector"
+          ) as CollectorStep | undefined;
+          if (collectorStep && Array.isArray(collectorStep.agents)) {
+            const collectors: CollectorInfo[] = collectorStep.agents.map((a: CollectorAgent) => ({
+              id: a.name,
+              name: (a.name as string).replace(/^Collector/, ""),
+              description: a.description ?? "",
+            }));
+            setAvailableCollectors(collectors);
+            const defaultCollector = collectorStep.agents.find((a: CollectorAgent) => !a.is_fallback);
+            if (defaultCollector) {
+              setCollectorCounts({ [defaultCollector.name]: 1 });
+            } else if (collectors.length > 0) {
+              setCollectorCounts({ [collectors[0].id]: 1 });
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        if (err instanceof InvalidCodeError) {
+          handleInvalidCode();
+        } else {
+          console.warn("Failed to fetch capabilities:", err);
+        }
+      });
+  }, [accessCode, handleInvalidCode]);
+
+  // ── Collector helpers ──
+  function toggleCollector(collectorId: string) {
+    setCollectorCounts((prev) => {
+      const next = { ...prev };
+      if (next[collectorId] > 0) {
+        const totalEnabled = Object.values(next).reduce((s, c) => s + c, 0);
+        if (totalEnabled <= next[collectorId]) return prev;
+        delete next[collectorId];
+      } else {
+        next[collectorId] = 1;
+      }
+      return next;
+    });
+  }
+
+  function setCollectorCount(collectorId: string, count: number) {
+    setCollectorCounts((prev) => {
+      const next = { ...prev };
+      if (count <= 0) {
+        const totalEnabled = Object.values(next).reduce((s, c) => s + c, 0);
+        if (totalEnabled <= (next[collectorId] ?? 0)) return prev;
+        delete next[collectorId];
+      } else {
+        next[collectorId] = Math.min(count, 5);
+      }
+      return next;
+    });
+  }
+
+  // ── Step updater ──
+  function updateStep(id: StepId, status: StepStatus, detail?: string) {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status, detail } : s))
+    );
+  }
+
+  // ── Build raw result JSON ──
+  function buildRawResultJson(
+    outcome: string, confidence: number, porRoot: string,
+    verdict: any, porBundle: any, reasoningTrace: any,
+    evidenceBundles: any[], collectorsUsed: string[],
+  ): string {
+    const rawResult: PorRawResult = {
+      ok: true, errors: [], outcome, confidence, por_root: porRoot,
+      market_id: verdict?.market_id ?? "",
+      artifacts: { verdict, por_bundle: porBundle, reasoning_trace: reasoningTrace, evidence_bundles: evidenceBundles, collectors_used: collectorsUsed },
+    };
+    return JSON.stringify(rawResult);
+  }
+
+  // ── Run full pipeline ──
   async function handleRun() {
     if (!accessCode) return;
     setLoading(true);
+    setDone(false);
+    setSteps(createSteps());
+    setResolutionArtifacts(null);
+
     try {
-      const raw = await callApi(accessCode, "/step/resolve", { question });
-      const summary = toRunSummary(raw);
-      setResult(summary);
-      onResult(summary);
-      toast.success("PoR complete");
-    } catch (err) {
-      toast.error("PoR failed", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      let promptSpec: any = null;
+      let toolPlan: any = null;
+      if (aiPrompt) {
+        try {
+          const parsed = JSON.parse(aiPrompt);
+          promptSpec = parsed.prompt_spec ?? null;
+          toolPlan = parsed.tool_plan ?? null;
+        } catch { /* ignore */ }
+      }
+
+      if (!promptSpec) {
+        const validateData = await callApi(accessCode, "/validate", {
+          user_input: question,
+          ...(selectedProvider && { llm_provider: selectedProvider }),
+          ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
+        });
+        promptSpec = validateData.prompt_spec;
+        toolPlan = validateData.tool_plan;
+      }
+
+      if (!promptSpec || !toolPlan) throw new Error("Could not obtain prompt_spec and tool_plan");
+
+      const temporalConstraint: TemporalConstraint | null =
+        (promptSpec?.extra?.temporal_constraint as TemporalConstraint) ?? null;
+
+      const collectorsToUse = selectedCollectors.length > 0 ? selectedCollectors : ["CollectorOpenSearch"];
+
+      // Collect
+      updateStep("collect", "running");
+      const collectData = await callApi(accessCode, "/step/collect", {
+        prompt_spec: promptSpec, tool_plan: toolPlan, collectors: collectorsToUse,
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
       });
+      if (collectData.ok === false) throw new Error(collectData.errors?.join("; ") || "Collect failed");
+      let evidenceBundles = collectData.evidence_bundles ?? [];
+      const totalEvidence = evidenceBundles.reduce((sum: number, b: any) => sum + (b?.items?.length ?? 0), 0);
+      updateStep("collect", "completed", `${totalEvidence} evidence items`);
+
+      // Quality check
+      let qualityScorecard: QualityScorecard | null = null;
+      if (skipQualityCheck) {
+        updateStep("quality_check", "completed", "Skipped");
+      } else {
+        updateStep("quality_check", "running");
+        const MAX_QC_RETRIES = 2;
+        for (let i = 0; i < MAX_QC_RETRIES; i++) {
+          const qcData = await callApi(accessCode, "/step/quality_check", { prompt_spec: promptSpec, evidence_bundles: evidenceBundles });
+          if (!qcData.ok) break;
+          qualityScorecard = qcData.scorecard;
+          if (qcData.meets_threshold) break;
+          const retryHints = qualityScorecard?.retry_hints;
+          if (!retryHints || Object.keys(retryHints).length === 0) break;
+          const retryData = await callApi(accessCode, "/step/collect", {
+            prompt_spec: promptSpec, tool_plan: toolPlan, collectors: collectorsToUse, quality_feedback: retryHints,
+            ...(selectedProvider && { llm_provider: selectedProvider }),
+            ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
+          });
+          if (retryData.ok !== false && Array.isArray(retryData.evidence_bundles)) {
+            evidenceBundles = [...evidenceBundles, ...retryData.evidence_bundles];
+          }
+        }
+        const qualityLevel = qualityScorecard?.quality_level ?? "N/A";
+        updateStep("quality_check", "completed", `${qualityLevel} | ${qualityScorecard?.meets_threshold ? "Passed" : "Below threshold"}`);
+      }
+
+      // Audit
+      updateStep("audit", "running");
+      const auditData = await callApi(accessCode, "/step/audit", {
+        prompt_spec: promptSpec, evidence_bundles: evidenceBundles,
+        ...(qualityScorecard && { quality_scorecard: qualityScorecard }),
+        ...(temporalConstraint && { temporal_constraint: temporalConstraint }),
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
+      });
+      if (auditData.ok === false) throw new Error(auditData.errors?.join("; ") || "Audit failed");
+      const reasoningTrace = auditData.reasoning_trace;
+      updateStep("audit", "completed", `${reasoningTrace?.steps?.length ?? 0} reasoning steps`);
+
+      // Judge
+      updateStep("judge", "running");
+      const judgeData = await callApi(accessCode, "/step/judge", {
+        prompt_spec: promptSpec, evidence_bundles: evidenceBundles, reasoning_trace: reasoningTrace,
+        ...(qualityScorecard && { quality_scorecard: qualityScorecard }),
+        ...(temporalConstraint && { temporal_constraint: temporalConstraint }),
+        ...(selectedProvider && { llm_provider: selectedProvider }),
+        ...(selectedProvider && selectedModel && { llm_model: selectedModel }),
+      });
+      if (judgeData.ok === false) throw new Error(judgeData.errors?.join("; ") || "Judge failed");
+      const verdict = judgeData.verdict;
+      const outcome = judgeData.outcome;
+      const confidence = judgeData.confidence;
+      updateStep("judge", "completed", `${outcome ?? "UNKNOWN"} at ${confidence != null ? Math.round(confidence * 100) : "?"}%`);
+
+      // Bundle
+      updateStep("bundle", "running");
+      const bundleData = await callApi(accessCode, "/step/bundle", {
+        prompt_spec: promptSpec, evidence_bundles: evidenceBundles, reasoning_trace: reasoningTrace, verdict,
+      });
+      if (bundleData.ok === false) throw new Error(bundleData.errors?.join("; ") || "Bundle failed");
+      const porBundle = bundleData.por_bundle;
+      const porRoot = bundleData.por_root;
+      updateStep("bundle", "completed", `root: ${typeof porRoot === "string" ? porRoot.slice(0, 10) + "\u2026" : "N/A"}`);
+
+      const summary = buildRunSummary(evidenceBundles, reasoningTrace, verdict, porBundle, outcome, confidence, porRoot);
+      onResult(summary);
+      onRawResult?.(buildRawResultJson(outcome, confidence, porRoot, verdict, porBundle, reasoningTrace, evidenceBundles, collectorsToUse));
+
+      setResolutionArtifacts({
+        prompt_spec: promptSpec, tool_plan: toolPlan, collectors_used: collectorsToUse,
+        evidence_bundles: evidenceBundles, reasoning_trace: reasoningTrace, verdict,
+        por_bundle: porBundle, quality_scorecard: qualityScorecard, temporal_constraint: temporalConstraint,
+      });
+
+      setDone(true);
+      toast.success("PoR pipeline complete");
+    } catch (err) {
+      toast.error("PoR failed", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
       setLoading(false);
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
-        <button
-          onClick={handleRun}
-          disabled={loading}
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-2"
-        >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="h-3.5 w-3.5" />
-          )}
-          {loading ? "Running PoR…" : "Run Proof of Reasoning"}
-        </button>
-      </div>
+  // ── Dispute handlers ──
+  async function handleDisputeSubmit(payload: any): Promise<DisputeResponse> {
+    if (!accessCode) throw new Error("Missing access code");
+    return callApi(accessCode, "/dispute", payload, "POST");
+  }
 
-      {result && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-primary mb-3">Proof of Reasoning Result</p>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-xs text-muted-foreground">Outcome</span>
-                <p className="text-lg font-bold">{result.outcome}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Confidence</span>
-                <p className="text-lg font-bold">{(result.confidence * 100).toFixed(0)}%</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">PoR Root</span>
-                <p className="font-mono text-xs truncate">{result.por_root}</p>
-              </div>
+  async function handleLLMDisputeSubmit(payload: any): Promise<DisputeResponse> {
+    if (!accessCode) throw new Error("Missing access code");
+    return callApi(accessCode, "/dispute/llm", payload, "POST");
+  }
+
+  function handleDisputeResult(response: DisputeResponse) {
+    if (!response.artifacts) return;
+    const a = response.artifacts;
+    const newRaw: PorRawResult = {
+      ok: true, errors: [],
+      outcome: a.verdict?.outcome ?? resolutionArtifacts?.verdict?.outcome ?? "UNKNOWN",
+      confidence: a.verdict?.confidence ?? a.verdict?.metadata?.confidence ?? resolutionArtifacts?.verdict?.confidence ?? 0,
+      por_root: resolutionArtifacts?.por_bundle?.por_root ?? "",
+      market_id: a.verdict?.market_id ?? "",
+      artifacts: {
+        verdict: a.verdict ?? resolutionArtifacts?.verdict,
+        por_bundle: resolutionArtifacts?.por_bundle,
+        reasoning_trace: a.reasoning_trace ?? resolutionArtifacts?.reasoning_trace,
+        evidence_bundles: a.evidence_bundle ? [a.evidence_bundle] : resolutionArtifacts?.evidence_bundles ?? [],
+        collectors_used: resolutionArtifacts?.collectors_used ?? [],
+      },
+    };
+    onRawResult?.(JSON.stringify(newRaw));
+
+    setResolutionArtifacts((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        verdict: a.verdict ?? prev.verdict,
+        reasoning_trace: a.reasoning_trace ?? prev.reasoning_trace,
+        evidence_bundles: a.evidence_bundle ? [a.evidence_bundle] : prev.evidence_bundles,
+      };
+    });
+  }
+
+  // Whether dispute tab has content
+  const hasDisputeArtifacts = resolutionArtifacts !== null;
+
+  // ─── Settings panel (rendered inside Rerun & Dispute tabs) ──────────────
+
+  const settingsPanel = (
+    <details className="rounded-lg border border-border/50 bg-muted/10">
+      <summary className="p-3 cursor-pointer text-xs font-medium flex items-center gap-2">
+        <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+        Pipeline Settings
+        {selectedCollectors.length > 0 && (
+          <Badge variant="outline" className="text-[10px] ml-auto">
+            {selectedCollectors.length} collector{selectedCollectors.length !== 1 ? "s" : ""}
+            {selectedProvider ? ` | ${selectedProvider}` : ""}
+          </Badge>
+        )}
+      </summary>
+      <div className="px-3 pb-3 space-y-4 border-t border-border/30 pt-3">
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground">Collectors</label>
+          {availableCollectors.length === 0 ? (
+            <p className="text-xs text-muted-foreground/60 italic">Loading collectors...</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {availableCollectors.map((c) => {
+                const count = collectorCounts[c.id] ?? 0;
+                const isActive = count > 0;
+                return (
+                  <div key={c.id} className="flex items-center gap-1">
+                    <button type="button" onClick={() => toggleCollector(c.id)} disabled={loading}
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                        isActive ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 bg-muted/20 text-muted-foreground hover:bg-muted/30"
+                      } ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      title={c.description}>
+                      {c.name}
+                    </button>
+                    {isActive && (
+                      <div className="inline-flex items-center gap-0.5">
+                        <button type="button" onClick={() => setCollectorCount(c.id, count - 1)} disabled={loading}
+                          className="h-5 w-5 rounded border border-border/50 inline-flex items-center justify-center text-muted-foreground hover:bg-muted/30 disabled:opacity-50">
+                          <Minus className="h-2.5 w-2.5" />
+                        </button>
+                        <span className="text-xs font-mono w-4 text-center">{count}</span>
+                        <button type="button" onClick={() => setCollectorCount(c.id, count + 1)} disabled={loading || count >= 5}
+                          className="h-5 w-5 rounded border border-border/50 inline-flex items-center justify-center text-muted-foreground hover:bg-muted/30 disabled:opacity-50">
+                          <Plus className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            {result.evidence_bundles && result.evidence_bundles.length > 0 && (
-              <details className="mt-3">
-                <summary className="text-xs text-primary cursor-pointer">
-                  View evidence ({result.evidence_bundles.reduce((n, b) => n + b.items.length, 0)} items)
-                </summary>
-                <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                  {result.evidence_bundles.map((b) => (
-                    <p key={b.bundle_id}>
-                      <Badge variant="outline" className="text-[10px] mr-1">{b.collector_name}</Badge>
-                      {b.items.length} items
-                    </p>
-                  ))}
-                </div>
-              </details>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Provider</label>
+            <Select value={selectedProvider ?? "__default__"}
+              onValueChange={(v) => {
+                if (v === "__default__") { setSelectedProvider(null); setSelectedModel(""); }
+                else { setSelectedProvider(v); const p = providers.find((p) => p.provider === v); if (p) setSelectedModel(p.default_model); }
+              }}
+              disabled={loading}>
+              <SelectTrigger className="text-xs"><SelectValue placeholder="Server default" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">Server default</SelectItem>
+                {providers.map((p) => (<SelectItem key={p.provider} value={p.provider}>{p.provider}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Model</label>
+            <Input value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}
+              disabled={loading || !selectedProvider}
+              placeholder={selectedProvider ? "model name" : "select provider first"}
+              className="text-xs" />
+          </div>
+        </div>
+      </div>
+    </details>
+  );
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <Tabs defaultValue="resolve">
+      <TabsList>
+        <TabsTrigger value="resolve">Resolve</TabsTrigger>
+        <TabsTrigger value="rerun">Rerun</TabsTrigger>
+        <TabsTrigger value="dispute" disabled={!hasDisputeArtifacts}>Dispute</TabsTrigger>
+      </TabsList>
+
+      {/* ── Resolve tab ── */}
+      <TabsContent value="resolve" className="mt-4">
+        {resolveContent ?? (
+          <p className="text-xs text-muted-foreground italic">
+            Run Proof of Reasoning first to enable resolution.
+          </p>
+        )}
+      </TabsContent>
+
+      {/* ── Rerun tab ── */}
+      <TabsContent value="rerun" className="mt-4 space-y-4">
+        {settingsPanel}
+
+        <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
+          <input
+            type="checkbox"
+            checked={skipQualityCheck}
+            onChange={(e) => setSkipQualityCheck(e.target.checked)}
+            disabled={loading}
+            className="rounded border-border"
+          />
+          Skip quality check
+        </label>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRun}
+            disabled={loading}
+            className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {loading ? "Running PoR Pipeline\u2026" : "Run Proof of Reasoning"}
+          </button>
+          {done && (
+            <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-400">Complete</Badge>
+          )}
+        </div>
+
+        {(loading || done) && (
+          <div className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-1.5">
+            {steps.map((step) => <StepIndicator key={step.id} step={step} />)}
+          </div>
+        )}
+      </TabsContent>
+
+      {/* ── Dispute tab ── */}
+      <TabsContent value="dispute" className="mt-4 space-y-4">
+        {hasDisputeArtifacts ? (
+          <>
+            {settingsPanel}
+
+            <details open>
+              <summary className="text-xs font-medium text-muted-foreground cursor-pointer mb-2">
+                LLM Dispute (plain language)
+              </summary>
+              <LLMDisputePanel
+                artifacts={resolutionArtifacts}
+                onSubmit={async (payload) => {
+                  const res = await handleLLMDisputeSubmit(payload);
+                  handleDisputeResult(res);
+                  return res;
+                }}
+                disabled={loading}
+              />
+            </details>
+
+            <details>
+              <summary className="text-xs font-medium text-muted-foreground cursor-pointer mb-2">
+                Advanced Dispute (technical)
+              </summary>
+              <DisputePanel
+                artifacts={resolutionArtifacts}
+                onSubmit={async (payload) => {
+                  const res = await handleDisputeSubmit(payload);
+                  handleDisputeResult(res);
+                  return res;
+                }}
+                disabled={loading}
+              />
+            </details>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground italic">
+            No AI result available to dispute. Run Proof of Reasoning first.
+          </p>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/lib/role";
 import { fetchMarkets } from "@/lib/admin-api";
-import type { AdminMarket } from "@/lib/types";
+import type { AdminMarket, AdminMarketStatus } from "@/lib/types";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -21,6 +21,15 @@ const SORT_OPTIONS: { label: string; value: SortField }[] = [
   { label: "Start Time", value: "start_time" },
 ];
 
+type StatusFilter = AdminMarketStatus | "all";
+
+const STATUS_TABS: { label: string; value: StatusFilter }[] = [
+  { label: "Pending Verification", value: "pending_verification" },
+  { label: "Monitoring", value: "monitoring" },
+  { label: "Resolved", value: "resolved" },
+  { label: "All", value: "all" },
+];
+
 function formatDate(iso: string) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
@@ -29,16 +38,16 @@ function formatDate(iso: string) {
 }
 
 function statusBadge(market: AdminMarket) {
-  if (market.resolve_time) {
-    return <Badge variant="outline" className="text-[10px] text-muted-foreground">Resolved</Badge>;
+  switch (market.status) {
+    case "monitoring":
+      return <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400">Monitoring</Badge>;
+    case "pending_verification":
+      return <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-400">Pending Verification</Badge>;
+    case "resolved":
+      return <Badge variant="outline" className="text-[10px] text-muted-foreground">Resolved</Badge>;
+    default:
+      return <Badge variant="outline" className="text-[10px]">{market.status}</Badge>;
   }
-  if (market.ai_outcome) {
-    return <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-400">Has AI Result</Badge>;
-  }
-  if (market.ai_prompt) {
-    return <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400">Prompted</Badge>;
-  }
-  return <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-400">Active</Badge>;
 }
 
 export function MarketTable() {
@@ -49,6 +58,7 @@ export function MarketTable() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortField>("created_time");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending_verification");
   const pageSize = 20;
 
   const load = useCallback(async () => {
@@ -60,15 +70,16 @@ export function MarketTable() {
         page_size: pageSize,
         sort,
         order: "desc",
+        status: statusFilter === "all" ? undefined : statusFilter,
       });
-      setMarkets(data.markets);
-      setTotal(data.total);
+      setMarkets(data.markets ?? []);
+      setTotal(data.total ?? 0);
     } catch {
       // Error handled by admin-api
     } finally {
       setLoading(false);
     }
-  }, [accessCode, sort, page]);
+  }, [accessCode, sort, page, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -76,6 +87,24 @@ export function MarketTable() {
 
   return (
     <div className="space-y-4">
+      {/* Status filter tabs */}
+      <div className="flex gap-1 rounded-lg bg-muted/30 p-1 w-fit">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => { setStatusFilter(tab.value); setPage(1); }}
+            className={cn(
+              "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+              statusFilter === tab.value
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Sort tabs */}
       <div className="flex gap-1 rounded-lg bg-muted/30 p-1 w-fit">
         {SORT_OPTIONS.map((opt) => (
@@ -126,7 +155,7 @@ export function MarketTable() {
                     key={m.id}
                     className={cn(
                       "cursor-pointer",
-                      m.ai_outcome && !m.resolve_time && "bg-purple-500/5"
+                      m.status === "pending_verification" && "bg-amber-500/5"
                     )}
                     onClick={() => router.push(`/admin/markets/${m.id}`)}
                   >

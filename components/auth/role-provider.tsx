@@ -14,14 +14,21 @@ async function fetchRole(code: string): Promise<"admin" | "user"> {
     body: JSON.stringify({ code }),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `HTTP ${res.status}`);
+    let msg = `HTTP ${res.status}`;
+    try {
+      const json = await res.json();
+      if (json.msg) msg = json.msg;
+      else if (json.detail) msg = json.detail;
+    } catch { /* ignore */ }
+    throw new Error(msg);
   }
   const json = await res.json();
-  if (json.error) {
-    throw new Error(typeof json.error === "string" ? json.error : "Invalid code");
+  // Backend error envelope: { code: 4100, msg: "invalid code" }
+  if (json.code && json.code !== 0) {
+    throw new Error(json.msg || json.detail || "Invalid code");
   }
-  return json.is_admin ? "admin" : "user";
+  const isAdmin = json.data?.is_admin ?? json.is_admin ?? false;
+  return isAdmin ? "admin" : "user";
 }
 
 export function RoleProvider({ children }: { children: ReactNode }) {

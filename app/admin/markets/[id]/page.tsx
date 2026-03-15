@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useRole } from "@/lib/role";
-import { fetchMarket } from "@/lib/admin-api";
+import { fetchMarket, updateMarket } from "@/lib/admin-api";
 import type { AdminMarket, RunSummary } from "@/lib/types";
 import { MarketDetail } from "@/components/admin/market-detail";
+import { AiResultDetail } from "@/components/admin/ai-result-detail";
 import { PorTrigger } from "@/components/admin/por-trigger";
 import { ResolveForm } from "@/components/admin/resolve-form";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function MarketDetailPage() {
   const params = useParams<{ id: string }>();
@@ -16,6 +18,7 @@ export default function MarketDetailPage() {
   const [market, setMarket] = useState<AdminMarket | null>(null);
   const [loading, setLoading] = useState(true);
   const [porResult, setPorResult] = useState<RunSummary | null>(null);
+  const [porRawResult, setPorRawResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!accessCode || !params.id) return;
@@ -31,6 +34,17 @@ export default function MarketDetailPage() {
   }, [accessCode, params.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function handleBackToMonitoring() {
+    if (!accessCode || !market) return;
+    try {
+      await updateMarket(accessCode, market.id, { status: "monitoring" });
+      toast.success("Market moved back to monitoring");
+      load();
+    } catch {
+      // Error handled by admin-api
+    }
+  }
 
   if (loading) {
     return (
@@ -48,31 +62,51 @@ export default function MarketDetailPage() {
     );
   }
 
-  const isResolved = !!market.resolve_time;
-  const hasExistingAiResult = !!market.ai_result;
+  // Use PoR raw result if available, otherwise fall back to market's ai_result
+  const displayAiResult = porRawResult || market.ai_result;
+
+  // Build the resolve form content passed into PorTrigger's Resolve tab
+  const resolveForm = (displayAiResult || porResult) ? (
+    <ResolveForm
+      marketId={market.id}
+      porResult={porResult}
+      rawAiResult={displayAiResult || undefined}
+      onResolved={load}
+      onRevertToMonitoring={market.status === "pending_verification" ? handleBackToMonitoring : undefined}
+    />
+  ) : undefined;
 
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="text-xs text-muted-foreground">
-        Admin → Market Monitor → <span className="text-foreground">{market.title}</span>
+        Admin &rarr; Market Monitor &rarr; <span className="text-foreground">{market.title}</span>
       </div>
 
       <MarketDetail market={market} />
 
-      {!isResolved && (
-        <>
-          <PorTrigger
-            question={market.title}
-            onResult={setPorResult}
-          />
-          <ResolveForm
-            marketId={market.id}
-            hasExistingAiResult={hasExistingAiResult}
-            porResult={porResult}
-          />
-        </>
+      {/* AI Result Detail — full evidence, reasoning, proofs */}
+      {displayAiResult && (
+        <AiResultDetail
+          aiResult={displayAiResult}
+          aiPrompt={market.ai_prompt || undefined}
+          resolveReasoning={market.resolve_reasoning || undefined}
+        />
       )}
+
+      {/* Action panel — shown for monitoring and pending_verification */}
+      {(market.status === "monitoring" || market.status === "pending_verification") && (
+        <PorTrigger
+          question={market.title}
+          aiPrompt={market.ai_prompt || undefined}
+          aiResult={displayAiResult || undefined}
+          onResult={setPorResult}
+          onRawResult={setPorRawResult}
+          resolveContent={resolveForm}
+        />
+      )}
+
+      {/* resolved: read-only, no action buttons */}
     </div>
   );
 }

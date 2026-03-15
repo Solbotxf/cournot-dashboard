@@ -1,4 +1,4 @@
-import type { AdminMarket } from "@/lib/types";
+import type { AdminMarket, AdminMarketStatus } from "@/lib/types";
 import { toast } from "sonner";
 
 const API_BASE = "/api/proxy";
@@ -20,18 +20,23 @@ async function adminFetch<T>(url: string, options?: RequestInit): Promise<T> {
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
-      const text = await res.text();
-      if (text) msg = text;
+      const json = await res.json();
+      if (json.msg) msg = json.msg;
+      else if (json.detail) msg = json.detail;
     } catch { /* ignore */ }
     toast.error(msg);
     throw new AdminApiError(msg);
   }
   const json = await res.json();
-  // Backend returns errors as { error: "message" } or plain error strings
-  if (json.error) {
-    const errMsg = typeof json.error === "string" ? json.error : "API error";
+  // Backend error envelope: { code: 4100, msg: "invalid code" }
+  if (json.code && json.code !== 0) {
+    const errMsg = json.msg || json.detail || "API error";
     toast.error(errMsg);
     throw new AdminApiError(errMsg);
+  }
+  // Backend success envelope: { code: 0, msg: "Success", data: {...} }
+  if (json.data !== undefined) {
+    return json.data as T;
   }
   return json as T;
 }
@@ -55,6 +60,7 @@ export async function fetchMarkets(
     page_size?: number;
     sort?: string;
     order?: "asc" | "desc";
+    status?: AdminMarketStatus;
   } = {}
 ): Promise<ListMarketsResponse> {
   const qs = new URLSearchParams();
@@ -63,18 +69,24 @@ export async function fetchMarkets(
   qs.set("page_size", String(params.page_size ?? 20));
   if (params.sort) qs.set("sort", params.sort);
   if (params.order) qs.set("order", params.order);
-  return adminFetch<ListMarketsResponse>(
+  if (params.status) qs.set("status", params.status);
+  const data = await adminFetch<ListMarketsResponse>(
     `${API_BASE}/markets/list?${qs.toString()}`
   );
+  return { markets: data.markets ?? [], total: data.total ?? 0 };
 }
 
 export async function fetchMarket(
   code: string,
   id: number
 ): Promise<AdminMarket | null> {
-  // No single-market endpoint — fetch list and find by ID
-  const data = await fetchMarkets(code, { page_size: 100 });
-  return data.markets.find((m) => m.id === id) ?? null;
+  const qs = new URLSearchParams();
+  qs.set("code", code);
+  qs.set("id", String(id));
+  const res = await adminFetch<{ market: AdminMarket }>(
+    `${API_BASE}/markets/id?${qs.toString()}`
+  );
+  return res.market ?? null;
 }
 
 export async function createMarket(
@@ -103,6 +115,8 @@ export async function updateMarket(
     platform_url?: string;
     start_time?: string;
     end_time?: string;
+    status?: AdminMarketStatus;
+    ai_result?: string;
   }
 ): Promise<{ market: AdminMarket }> {
   return adminFetch<{ market: AdminMarket }>(`${API_BASE}/markets/update`, {
@@ -110,19 +124,4 @@ export async function updateMarket(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, id, ...data }),
   });
-}
-
-export async function updateAiResult(
-  code: string,
-  id: number,
-  aiResult: string
-): Promise<{ market: AdminMarket }> {
-  return adminFetch<{ market: AdminMarket }>(
-    `${API_BASE}/markets/update_ai_result`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, id, ai_result: aiResult }),
-    }
-  );
 }
