@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { Sparkles, Search, ShieldCheck, Brain, Scale, ChevronRight, Info, AlertTriangle, ExternalLink, CheckCircle2, XCircle, MinusCircle, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -49,7 +48,6 @@ interface StepConfig {
   accentBg: string;
   accentText: string;
   defaultTarget: DisputeTargetArtifact;
-  defaultMode: "full_rerun" | "reasoning_only";
   defaultReason: DisputeReasonCode;
 }
 
@@ -63,7 +61,6 @@ const PIPELINE_STEPS: StepConfig[] = [
     accentBg: "bg-violet-500/10",
     accentText: "text-violet-400",
     defaultTarget: "prompt_spec",
-    defaultMode: "full_rerun",
     defaultReason: "OTHER",
   },
   {
@@ -75,7 +72,6 @@ const PIPELINE_STEPS: StepConfig[] = [
     accentBg: "bg-emerald-500/10",
     accentText: "text-emerald-400",
     defaultTarget: "evidence_bundle",
-    defaultMode: "full_rerun",
     defaultReason: "EVIDENCE_INSUFFICIENT",
   },
   {
@@ -87,7 +83,6 @@ const PIPELINE_STEPS: StepConfig[] = [
     accentBg: "bg-sky-500/10",
     accentText: "text-sky-400",
     defaultTarget: "reasoning_trace",
-    defaultMode: "reasoning_only",
     defaultReason: "REASONING_ERROR",
   },
   {
@@ -99,7 +94,6 @@ const PIPELINE_STEPS: StepConfig[] = [
     accentBg: "bg-amber-500/10",
     accentText: "text-amber-400",
     defaultTarget: "verdict",
-    defaultMode: "reasoning_only",
     defaultReason: "REASONING_ERROR",
   },
 ];
@@ -1658,9 +1652,7 @@ function StepDisputeDialog({
   const [message, setMessage] = useState("");
   const [leafPath, setLeafPath] = useState("");
   const [bundleIndex, setBundleIndex] = useState(0);
-  const [rerunCollect, setRerunCollect] = useState(
-    config.defaultMode === "full_rerun"
-  );
+  const [evidenceUrlsText, setEvidenceUrlsText] = useState("");
   const [appendItemsJson, setAppendItemsJson] = useState("[]");
   const [promptSpecOverrideJson, setPromptSpecOverrideJson] = useState(
     () => {
@@ -1702,11 +1694,6 @@ function StepDisputeDialog({
     config.id === "reasoning" ||
     config.id === "verdict";
 
-  const canFullRerun =
-    !!artifacts.tool_plan &&
-    !!artifacts.collectors_used &&
-    artifacts.collectors_used.length > 0;
-
   const currentReasonMeta = REASON_CODE_OPTIONS.find(
     (r) => r.value === reasonCode
   );
@@ -1717,12 +1704,38 @@ function StepDisputeDialog({
       return;
     }
 
-    const effectiveRerunCollect =
-      config.id === "prompt_spec" ? true : rerunCollect;
-
-    if (!effectiveRerunCollect && !selectedEvidenceBundle) {
+    if (!selectedEvidenceBundle) {
       toast.error("No evidence bundle available");
       return;
+    }
+
+    // Validate reason-specific required fields
+    if (reasonCode === "EVIDENCE_MISREAD") {
+      if (!artifacts.tool_plan) {
+        toast.error("tool_plan is required for EVIDENCE_MISREAD");
+        return;
+      }
+      if (!artifacts.collectors_used || artifacts.collectors_used.length === 0) {
+        toast.error("collectors is required for EVIDENCE_MISREAD");
+        return;
+      }
+    }
+
+    // Parse evidence_urls for EVIDENCE_INSUFFICIENT
+    let evidenceUrls: string[] | null = null;
+    if (reasonCode === "EVIDENCE_INSUFFICIENT") {
+      evidenceUrls = evidenceUrlsText
+        .split("\n")
+        .map((u) => u.trim())
+        .filter(Boolean);
+      if (evidenceUrls.length === 0) {
+        toast.error("evidence_urls is required for EVIDENCE_INSUFFICIENT");
+        return;
+      }
+      if (evidenceUrls.length > 10) {
+        toast.error("Maximum 10 evidence URLs allowed");
+        return;
+      }
     }
 
     let evidenceItemsAppend: any[] | null = null;
@@ -1757,8 +1770,7 @@ function StepDisputeDialog({
       return;
     }
 
-    const payload = {
-      mode: effectiveRerunCollect ? "full_rerun" : "reasoning_only",
+    const payload: Record<string, any> = {
       case_id: null,
       reason_code: reasonCode,
       message: message.trim(),
@@ -1767,21 +1779,11 @@ function StepDisputeDialog({
         leaf_path: leafPath.trim() || null,
       },
       prompt_spec: artifacts.prompt_spec,
-      evidence_bundle: effectiveRerunCollect
-        ? null
-        : selectedEvidenceBundle,
-      reasoning_trace: effectiveRerunCollect
-        ? null
-        : targetArtifact === "verdict" ||
-            targetArtifact === "reasoning_trace"
-          ? artifacts.reasoning_trace
-          : null,
-      tool_plan: effectiveRerunCollect
-        ? (artifacts.tool_plan ?? null)
-        : null,
-      collectors: effectiveRerunCollect
-        ? (artifacts.collectors_used ?? null)
-        : null,
+      evidence_bundle: selectedEvidenceBundle,
+      reasoning_trace: artifacts.reasoning_trace ?? null,
+      tool_plan: reasonCode === "EVIDENCE_MISREAD" ? (artifacts.tool_plan ?? null) : null,
+      collectors: reasonCode === "EVIDENCE_MISREAD" ? (artifacts.collectors_used ?? null) : null,
+      evidence_urls: evidenceUrls,
       patch:
         (evidenceItemsAppend && evidenceItemsAppend.length > 0) ||
         (promptSpecOverride && Object.keys(promptSpecOverride).length > 0)
@@ -1815,9 +1817,9 @@ function StepDisputeDialog({
   }
 
   const modeLabel = (() => {
-    if (config.id === "prompt_spec") return "Full pipeline rerun";
-    if (rerunCollect) return "Full pipeline rerun (collect + reason + judge)";
-    return "Reasoning-only rerun (skip evidence collection)";
+    if (reasonCode === "EVIDENCE_MISREAD") return "collect → audit → judge";
+    if (reasonCode === "EVIDENCE_INSUFFICIENT") return "collect → audit → judge";
+    return "audit → judge";
   })();
 
   return (
@@ -1918,42 +1920,37 @@ function StepDisputeDialog({
               How should the system re-run?
             </p>
 
-            {/* Rerun toggle */}
-            {config.id !== "prompt_spec" ? (
-              <div className="rounded-md border border-border/50 p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium">
-                      Re-collect evidence from sources
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {config.id === "evidence"
-                        ? "Always on for the evidence step -- evidence will be re-gathered from all collectors."
-                        : rerunCollect
-                          ? "ON: The system will fetch fresh evidence, then re-reason and re-judge."
-                          : "OFF: The system will reuse existing evidence and only re-run reasoning and judgment."}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={rerunCollect}
-                    onCheckedChange={setRerunCollect}
-                    disabled={config.id === "evidence"}
-                  />
+            {/* Reason-based step info */}
+            <div className="rounded-md border border-border/50 p-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {reasonCode === "EVIDENCE_MISREAD"
+                  ? "Evidence will be re-collected using tool_plan + collectors, then audit and judge re-run."
+                  : reasonCode === "EVIDENCE_INSUFFICIENT"
+                    ? "New evidence will be collected from the URLs you provide below, then audit and judge re-run."
+                    : "Audit and judge will re-run using existing evidence."}
+              </p>
+              {reasonCode === "EVIDENCE_MISREAD" && (!artifacts.tool_plan || !artifacts.collectors_used?.length) && (
+                <div className="flex items-center gap-1.5 text-[11px] text-red-400">
+                  <AlertTriangle className="w-3 h-3" />
+                  Missing tool_plan or collectors; required for EVIDENCE_MISREAD.
                 </div>
-                {rerunCollect && !canFullRerun && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-red-400">
-                    <AlertTriangle className="w-3 h-3" />
-                    Cannot re-collect: this run is missing tool_plan or
-                    collectors configuration.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-md border border-border/50 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Disputing the prompt spec always triggers a full pipeline
-                  rerun (collect + reason + judge) since everything
-                  downstream depends on it.
+              )}
+            </div>
+
+            {/* Evidence URLs for EVIDENCE_INSUFFICIENT */}
+            {reasonCode === "EVIDENCE_INSUFFICIENT" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">
+                  Evidence URLs <span className="text-red-400">*</span>
+                </label>
+                <Textarea
+                  value={evidenceUrlsText}
+                  onChange={(e) => setEvidenceUrlsText(e.target.value)}
+                  rows={3}
+                  placeholder={"https://reuters.com/article/...\nespn.com\nhttps://example.com/data"}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  One URL or domain per line (max 10). Required for EVIDENCE_INSUFFICIENT.
                 </p>
               </div>
             )}
@@ -1982,9 +1979,7 @@ function StepDisputeDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
-                  {rerunCollect
-                    ? "When re-collecting is on, this bundle is ignored and fresh evidence is gathered."
-                    : "Select which evidence bundle to send for re-reasoning. Each bundle comes from a different collector."}
+                  Select which evidence bundle to send. Each bundle comes from a different collector.
                 </p>
               </div>
             )}
@@ -1992,7 +1987,7 @@ function StepDisputeDialog({
             {/* Mode summary */}
             <div className="flex items-center gap-2 rounded-md bg-muted/20 px-3 py-2">
               <Badge variant="outline" className="text-[10px] shrink-0">
-                Mode
+                Steps
               </Badge>
               <span className="text-xs text-muted-foreground">
                 {modeLabel}
@@ -2135,10 +2130,7 @@ function StepDisputeDialog({
             onClick={handleSubmit}
             disabled={
               submitting ||
-              !message.trim() ||
-              (rerunCollect &&
-                config.id !== "prompt_spec" &&
-                !canFullRerun)
+              !message.trim()
             }
             className={cn(
               "inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors",

@@ -92,6 +92,17 @@ interface CollectorInfo {
   description: string;
 }
 
+// ─── Collector descriptions ──────────────────────────────────────────────────
+
+const COLLECTOR_DESCRIPTIONS: Record<string, string> = {
+  CollectorOpenSearch: "Searches the web for relevant articles and news using open search queries. Good general-purpose collector.",
+  CollectorSitePinned: "Fetches content from specific URLs referenced in the market description. Best for markets that cite official sources.",
+  CollectorHyDE: "Hypothetical Document Embeddings — generates a hypothetical answer document and searches for similar real content. Useful for nuanced or complex queries.",
+  CollectorWebPageReader: "Reads and extracts content from specific web pages. Works best when the market references known URLs.",
+  CollectorHTTP: "Direct HTTP requests to API endpoints or data sources. For structured/machine-readable data.",
+  CollectorMock: "Test collector that returns synthetic data. For development and testing only.",
+};
+
 // ─── Raw result shape ────────────────────────────────────────────────────────
 
 interface PorRawResult {
@@ -208,11 +219,21 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
               description: a.description ?? "",
             }));
             setAvailableCollectors(collectors);
-            const defaultCollector = collectorStep.agents.find((a: CollectorAgent) => !a.is_fallback);
-            if (defaultCollector) {
-              setCollectorCounts({ [defaultCollector.name]: 1 });
-            } else if (collectors.length > 0) {
-              setCollectorCounts({ [collectors[0].id]: 1 });
+            // Default: enable the 4 main collectors (matching playground defaults)
+            const defaultIds = ["CollectorOpenSearch", "CollectorSitePinned", "CollectorHyDE", "CollectorWebPageReader"];
+            const defaults: Record<string, number> = {};
+            for (const id of defaultIds) {
+              if (collectors.some((c) => c.id === id)) {
+                defaults[id] = 1;
+              }
+            }
+            if (Object.keys(defaults).length > 0) {
+              setCollectorCounts(defaults);
+            } else {
+              // Fallback: enable first non-fallback collector
+              const fallback = collectorStep.agents.find((a: CollectorAgent) => !a.is_fallback);
+              if (fallback) setCollectorCounts({ [fallback.name]: 1 });
+              else if (collectors.length > 0) setCollectorCounts({ [collectors[0].id]: 1 });
             }
           }
         }
@@ -400,7 +421,9 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
       });
 
       setDone(true);
-      toast.success("PoR pipeline complete");
+      toast.success("PoR pipeline complete", {
+        description: `Outcome: ${outcome} (${Math.round(confidence * 100)}% confidence). Results applied to the Resolve tab.`,
+      });
     } catch (err) {
       toast.error("PoR failed", { description: err instanceof Error ? err.message : "Unknown error" });
     } finally {
@@ -479,24 +502,29 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
       <div className="px-3 pb-3 space-y-4 border-t border-border/30 pt-3">
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground">Collectors</label>
+          <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+            Select which data collectors to use for gathering evidence. Each collector uses a different strategy.
+            Increase the count to run multiple passes with the same collector.
+          </p>
           {availableCollectors.length === 0 ? (
             <p className="text-xs text-muted-foreground/60 italic">Loading collectors...</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-1.5">
               {availableCollectors.map((c) => {
                 const count = collectorCounts[c.id] ?? 0;
                 const isActive = count > 0;
+                const desc = COLLECTOR_DESCRIPTIONS[c.id] || c.description || "";
                 return (
-                  <div key={c.id} className="flex items-center gap-1">
+                  <div key={c.id} className="flex items-center gap-2">
                     <button type="button" onClick={() => toggleCollector(c.id)} disabled={loading}
-                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors shrink-0 ${
                         isActive ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 bg-muted/20 text-muted-foreground hover:bg-muted/30"
                       } ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                      title={c.description}>
+                      title={desc}>
                       {c.name}
                     </button>
                     {isActive && (
-                      <div className="inline-flex items-center gap-0.5">
+                      <div className="inline-flex items-center gap-0.5 shrink-0">
                         <button type="button" onClick={() => setCollectorCount(c.id, count - 1)} disabled={loading}
                           className="h-5 w-5 rounded border border-border/50 inline-flex items-center justify-center text-muted-foreground hover:bg-muted/30 disabled:opacity-50">
                           <Minus className="h-2.5 w-2.5" />
@@ -507,6 +535,9 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
                           <Plus className="h-2.5 w-2.5" />
                         </button>
                       </div>
+                    )}
+                    {desc && (
+                      <span className="text-[10px] text-muted-foreground/60 leading-tight truncate">{desc}</span>
                     )}
                   </div>
                 );
@@ -553,7 +584,16 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
       </TabsList>
 
       {/* ── Resolve tab ── */}
-      <TabsContent value="resolve" className="mt-4">
+      <TabsContent value="resolve" className="mt-4 space-y-3">
+        <div className="rounded-lg border border-border/30 bg-muted/10 px-3 py-2">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Review the AI result above, then set the final outcome below. The form merges your decision
+            into the full PoR artifacts and submits it as the market resolution.
+            Use <strong>Advanced Edit</strong> to inspect or override individual fields in the JSON.
+            You can also <strong>Rerun</strong> the pipeline or <strong>Dispute</strong> the verdict
+            before resolving.
+          </p>
+        </div>
         {resolveContent ?? (
           <p className="text-xs text-muted-foreground italic">
             Run Proof of Reasoning first to enable resolution.
@@ -565,16 +605,25 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
       <TabsContent value="rerun" className="mt-4 space-y-4">
         {settingsPanel}
 
-        <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
-          <input
-            type="checkbox"
-            checked={skipQualityCheck}
-            onChange={(e) => setSkipQualityCheck(e.target.checked)}
-            disabled={loading}
-            className="rounded border-border"
-          />
-          Skip quality check
-        </label>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
+            <input
+              type="checkbox"
+              checked={skipQualityCheck}
+              onChange={(e) => setSkipQualityCheck(e.target.checked)}
+              disabled={loading}
+              className="rounded border-border"
+            />
+            Skip quality check
+          </label>
+          <p className="text-[11px] text-muted-foreground/60 leading-relaxed ml-5">
+            Quality check validates that collected evidence aligns with the market definition.
+            It strictly matches sources against the market requirements and may flag evidence as invalid
+            if sources don&apos;t directly address the market question. This can lead to higher
+            invalid/insufficient rates when sources are tangentially related. Skip this step
+            if you trust the evidence or want faster iteration.
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleRun}
@@ -594,18 +643,52 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
             {steps.map((step) => <StepIndicator key={step.id} step={step} />)}
           </div>
         )}
+        {done && (
+          <div className="rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
+            <p className="text-[11px] text-green-400 leading-relaxed">
+              <CheckCircle className="h-3 w-3 inline mr-1 align-text-bottom" />
+              Pipeline results have been applied to the <strong>Resolve</strong> tab.
+              Switch to the Resolve tab to review and finalize the outcome, or use the
+              Dispute tab to challenge the verdict.
+            </p>
+          </div>
+        )}
       </TabsContent>
 
       {/* ── Dispute tab ── */}
       <TabsContent value="dispute" className="mt-4 space-y-4">
         {hasDisputeArtifacts ? (
           <>
+            <div className="rounded-lg border border-border/30 bg-muted/10 px-3 py-2 space-y-1.5">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Challenge the current verdict by providing a reason and explanation. The system will
+                re-run the appropriate pipeline steps based on the reason code you select:
+              </p>
+              <ul className="text-[11px] text-muted-foreground/80 leading-relaxed ml-3 list-disc space-y-0.5">
+                <li><strong>EVIDENCE_MISREAD</strong> &mdash; re-collects evidence, then re-runs audit and judge. Requires tool_plan + collectors.</li>
+                <li><strong>EVIDENCE_INSUFFICIENT</strong> &mdash; collects from your provided URLs/domains, then re-runs audit and judge.</li>
+                <li><strong>REASONING_ERROR / LOGIC_GAP / OTHER</strong> &mdash; re-runs audit and judge using existing evidence.</li>
+              </ul>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                After disputing, the updated verdict will be applied to the Resolve tab automatically.
+              </p>
+            </div>
+
             {settingsPanel}
 
             <details open>
               <summary className="text-xs font-medium text-muted-foreground cursor-pointer mb-2">
                 LLM Dispute (plain language)
               </summary>
+              <div className="rounded-lg border border-border/20 bg-muted/5 px-3 py-2 mb-3">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Describe what went wrong in plain language. The LLM will analyze your message and
+                  determine which steps to re-run. Any URLs or domains mentioned in your message will
+                  be automatically extracted and merged with explicitly provided evidence URLs
+                  (deduplicated). If the reason code is EVIDENCE_INSUFFICIENT and URLs are found,
+                  fresh evidence collection will happen automatically.
+                </p>
+              </div>
               <LLMDisputePanel
                 artifacts={resolutionArtifacts}
                 collectors={selectedCollectors.length > 0 ? selectedCollectors : undefined}
@@ -622,6 +705,13 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
               <summary className="text-xs font-medium text-muted-foreground cursor-pointer mb-2">
                 Advanced Dispute (technical)
               </summary>
+              <div className="rounded-lg border border-border/20 bg-muted/5 px-3 py-2 mb-3">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  For power users. Directly control the reason code, target artifact, evidence bundle,
+                  and JSON patches. The reason code determines which pipeline steps are re-run &mdash;
+                  no separate &quot;mode&quot; selection is needed.
+                </p>
+              </div>
               <DisputePanel
                 artifacts={resolutionArtifacts}
                 collectors={selectedCollectors.length > 0 ? selectedCollectors : undefined}

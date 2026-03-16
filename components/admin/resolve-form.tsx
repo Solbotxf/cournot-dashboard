@@ -544,9 +544,15 @@ export function ResolveForm({ marketId, porResult, rawAiResult, onResolved, onRe
     <>
       <Card className="border-green-500/30 bg-green-500/5">
         <CardContent className="p-6">
-          <p className="text-sm font-medium text-green-400 mb-4 flex items-center gap-2">
+          <p className="text-sm font-medium text-green-400 mb-1 flex items-center gap-2">
             <CheckCircle className="h-4 w-4" />
             Final Resolve
+          </p>
+          <p className="text-xs text-muted-foreground mb-4 max-w-xl leading-relaxed">
+            This form constructs the final <span className="font-mono text-[11px]">ai_result</span> from
+            the fields below and resolves the market. If a PoR run or dispute result exists, your
+            outcome, confidence, and reasoning will be merged into the full artifacts JSON.
+            <strong className="text-amber-400"> Once resolved, the market outcome is final and cannot be changed.</strong>
           </p>
           <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
             <div className="grid grid-cols-2 gap-4">

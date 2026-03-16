@@ -80,8 +80,8 @@ export function DisputePanel({
   // Prompt spec override (partial JSON; merged server-side)
   const [promptSpecOverrideJson, setPromptSpecOverrideJson] = useState<string>("{}");
 
+  const [evidenceUrlsText, setEvidenceUrlsText] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-  const [rerunCollect, setRerunCollect] = useState(false);
 
   const selectedEvidenceBundle = useMemo(() => {
     const bundles = artifacts.evidence_bundles ?? [];
@@ -126,8 +126,46 @@ export function DisputePanel({
       return;
     }
 
-    const payload = {
-      mode: rerunCollect ? "full_rerun" : "reasoning_only",
+    // reason_code determines which steps run:
+    //   EVIDENCE_MISREAD      → collect → audit → judge (requires tool_plan, collectors)
+    //   EVIDENCE_INSUFFICIENT → collect → audit → judge (requires evidence_urls)
+    //   REASONING_ERROR       → audit → judge
+    //   LOGIC_GAP             → audit → judge
+    //   OTHER                 → audit → judge
+
+    // Validate reason-specific required fields
+    if (reasonCode === "EVIDENCE_MISREAD") {
+      const collectorsToUse = collectors && collectors.length > 0 ? collectors : artifacts.collectors_used;
+      if (!artifacts.tool_plan) {
+        toast.error("tool_plan is required for EVIDENCE_MISREAD");
+        return;
+      }
+      if (!collectorsToUse || collectorsToUse.length === 0) {
+        toast.error("collectors is required for EVIDENCE_MISREAD");
+        return;
+      }
+    }
+
+    // Parse evidence_urls for EVIDENCE_INSUFFICIENT
+    let evidenceUrls: string[] | null = null;
+    if (reasonCode === "EVIDENCE_INSUFFICIENT") {
+      evidenceUrls = evidenceUrlsText
+        .split("\n")
+        .map((u) => u.trim())
+        .filter(Boolean);
+      if (evidenceUrls.length === 0) {
+        toast.error("evidence_urls is required for EVIDENCE_INSUFFICIENT");
+        return;
+      }
+      if (evidenceUrls.length > 10) {
+        toast.error("Maximum 10 evidence URLs allowed");
+        return;
+      }
+    }
+
+    const collectorsToUse = collectors && collectors.length > 0 ? collectors : artifacts.collectors_used ?? null;
+
+    const payload: Record<string, any> = {
       case_id: caseId || null,
       reason_code: reasonCode,
       message: message.trim(),
@@ -136,10 +174,11 @@ export function DisputePanel({
         leaf_path: leafPath.trim() || null,
       },
       prompt_spec: artifacts.prompt_spec,
-      evidence_bundle: rerunCollect ? null : selectedEvidenceBundle,
-      reasoning_trace: rerunCollect ? null : (targetArtifact === "verdict" || targetArtifact === "reasoning_trace" ? artifacts.reasoning_trace : null),
-      tool_plan: rerunCollect ? (artifacts.tool_plan ?? null) : null,
-      collectors: rerunCollect ? (collectors && collectors.length > 0 ? collectors : artifacts.collectors_used ?? null) : null,
+      evidence_bundle: selectedEvidenceBundle,
+      reasoning_trace: artifacts.reasoning_trace ?? null,
+      tool_plan: reasonCode === "EVIDENCE_MISREAD" ? (artifacts.tool_plan ?? null) : null,
+      collectors: reasonCode === "EVIDENCE_MISREAD" ? collectorsToUse : null,
+      evidence_urls: evidenceUrls,
       patch:
         (evidenceItemsAppend && evidenceItemsAppend.length > 0) || (promptSpecOverride && Object.keys(promptSpecOverride).length > 0)
           ? {
@@ -230,17 +269,7 @@ export function DisputePanel({
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-medium text-muted-foreground">Evidence bundle to send</div>
-            <label className="text-xs text-muted-foreground inline-flex items-center gap-2 select-none">
-              <input
-                type="checkbox"
-                checked={rerunCollect}
-                onChange={(e) => setRerunCollect(e.target.checked)}
-              />
-              Rerun evidence collection (collect)
-            </label>
-          </div>
+          <div className="text-xs font-medium text-muted-foreground">Evidence bundle to send</div>
           <Select value={String(bundleIndex)} onValueChange={(v) => setBundleIndex(parseInt(v, 10))}>
             <SelectTrigger>
               <SelectValue placeholder="Select bundle" />
@@ -254,14 +283,33 @@ export function DisputePanel({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            If collect rerun is ON, the backend will ignore this bundle and re-collect evidence using tool_plan + collectors.
+            {reasonCode === "EVIDENCE_MISREAD"
+              ? "Backend will re-collect evidence using tool_plan + collectors, then audit and judge."
+              : reasonCode === "EVIDENCE_INSUFFICIENT"
+                ? "Backend will collect from evidence_urls below, then audit and judge."
+                : "Backend will re-run audit and judge using this bundle."}
           </p>
-          {rerunCollect && (!artifacts.tool_plan || !artifacts.collectors_used || artifacts.collectors_used.length === 0) && (
+          {reasonCode === "EVIDENCE_MISREAD" && (!artifacts.tool_plan || !(collectors && collectors.length > 0 ? collectors : artifacts.collectors_used)?.length) && (
             <p className="text-xs text-red-400">
-              Missing tool_plan or collectors_used in this run; cannot full_rerun collect.
+              Missing tool_plan or collectors; required for EVIDENCE_MISREAD.
             </p>
           )}
         </div>
+
+        {reasonCode === "EVIDENCE_INSUFFICIENT" && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Evidence URLs (one per line, max 10)</div>
+            <Textarea
+              value={evidenceUrlsText}
+              onChange={(e) => setEvidenceUrlsText(e.target.value)}
+              rows={4}
+              placeholder={"https://reuters.com/article/...\nespn.com\nhttps://example.com/data"}
+            />
+            <p className="text-xs text-muted-foreground">
+              Full URLs (https://...) or bare domains (espn.com). Required for EVIDENCE_INSUFFICIENT.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Patch: append evidence items (JSON array, optional)</div>
@@ -326,7 +374,7 @@ export function DisputePanel({
         <div className="flex gap-2">
           <button
             onClick={handleSubmit}
-            disabled={disabled || submitting || (rerunCollect && (!artifacts.tool_plan || !artifacts.collectors_used || artifacts.collectors_used.length === 0))}
+            disabled={disabled || submitting}
             className={cn(
               "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
               "bg-violet-500/20 text-violet-200 border border-violet-500/40 hover:bg-violet-500/25",

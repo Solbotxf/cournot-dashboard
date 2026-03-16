@@ -28,31 +28,36 @@ type LLMDisputeReasonCode =
   | "LOGIC_GAP"
   | "OTHER";
 
-const REASON_OPTIONS: { value: LLMDisputeReasonCode; label: string; description: string }[] = [
+const REASON_OPTIONS: { value: LLMDisputeReasonCode; label: string; description: string; steps: string }[] = [
   {
     value: "EVIDENCE_MISREAD",
     label: "Evidence Misread",
     description: "The system misinterpreted or misquoted the evidence",
+    steps: "collect \u2192 audit \u2192 judge",
   },
   {
     value: "EVIDENCE_INSUFFICIENT",
     label: "Evidence Insufficient",
     description: "Key evidence was missing or not considered",
+    steps: "collect \u2192 audit \u2192 judge",
   },
   {
     value: "REASONING_ERROR",
     label: "Reasoning Error",
     description: "The logic or inference chain has a flaw",
+    steps: "audit \u2192 judge",
   },
   {
     value: "LOGIC_GAP",
     label: "Logic Gap",
     description: "A step in the reasoning is unsupported or skipped",
+    steps: "audit \u2192 judge",
   },
   {
     value: "OTHER",
     label: "Other",
     description: "Something else is wrong",
+    steps: "audit \u2192 judge",
   },
 ];
 
@@ -82,8 +87,8 @@ export function LLMDisputePanel({
   const currentReason = REASON_OPTIONS.find((r) => r.value === reasonCode);
 
   function addUrl() {
-    if (evidenceUrls.length >= 5) {
-      toast.error("Maximum 5 URLs allowed");
+    if (evidenceUrls.length >= 10) {
+      toast.error("Maximum 10 URLs allowed");
       return;
     }
     setEvidenceUrls((prev) => [...prev, ""]);
@@ -109,14 +114,17 @@ export function LLMDisputePanel({
       return;
     }
 
-    // Filter out empty URLs and validate format
+    // Filter out empty entries — accept full URLs or bare domains (e.g. "espn.com")
     const urls = evidenceUrls.map((u) => u.trim()).filter(Boolean);
     for (const url of urls) {
-      try {
-        new URL(url);
-      } catch {
-        toast.error("Invalid URL", { description: url });
-        return;
+      // Allow bare domains (no protocol) — backend accepts them
+      if (url.includes("://")) {
+        try {
+          new URL(url);
+        } catch {
+          toast.error("Invalid URL", { description: url });
+          return;
+        }
       }
     }
 
@@ -198,7 +206,10 @@ export function LLMDisputePanel({
               </SelectContent>
             </Select>
             {currentReason && (
-              <p className="text-[11px] text-muted-foreground">{currentReason.description}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {currentReason.description}
+                <span className="text-muted-foreground/60"> &mdash; runs: {currentReason.steps}</span>
+              </p>
             )}
           </div>
 
@@ -235,7 +246,7 @@ export function LLMDisputePanel({
                 Supporting evidence URLs
                 <span className="text-muted-foreground/60 font-normal">(optional)</span>
               </label>
-              {evidenceUrls.length < 5 && (
+              {evidenceUrls.length < 10 && (
                 <button
                   type="button"
                   onClick={addUrl}
@@ -274,11 +285,11 @@ export function LLMDisputePanel({
                 </button>
               </div>
             ))}
-            {evidenceUrls.length > 0 && (
-              <p className="text-[10px] text-muted-foreground">
-                The system will fetch and analyze these pages as additional evidence.
-              </p>
-            )}
+            <p className="text-[10px] text-muted-foreground">
+              {evidenceUrls.length > 0
+                ? "The system will fetch and analyze these pages as additional evidence."
+                : "URLs and domains mentioned in your explanation above are automatically extracted and used as evidence. Add URLs here to explicitly include additional sources (they will be deduplicated with extracted ones)."}
+            </p>
           </div>
 
           {/* Submit */}
