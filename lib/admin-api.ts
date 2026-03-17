@@ -89,6 +89,17 @@ export async function fetchMarket(
   return res.market ?? null;
 }
 
+export async function fetchPublicMarket(
+  id: number
+): Promise<AdminMarket | null> {
+  const qs = new URLSearchParams();
+  qs.set("id", String(id));
+  const res = await adminFetch<{ market: AdminMarket }>(
+    `${API_BASE}/markets/id?${qs.toString()}`
+  );
+  return res.market ?? null;
+}
+
 export async function createMarket(
   code: string,
   data: {
