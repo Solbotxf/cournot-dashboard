@@ -19,6 +19,7 @@ export default function MarketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [porResult, setPorResult] = useState<RunSummary | null>(null);
   const [porRawResult, setPorRawResult] = useState<string | null>(null);
+  const [effectiveAiPrompt, setEffectiveAiPrompt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!accessCode || !params.id) return;
@@ -71,6 +72,7 @@ export default function MarketDetailPage() {
       marketId={market.id}
       porResult={porResult}
       rawAiResult={displayAiResult || undefined}
+      aiPrompt={effectiveAiPrompt || market.ai_prompt || undefined}
       onResolved={load}
       onRevertToMonitoring={market.status === "pending_verification" ? handleBackToMonitoring : undefined}
     />
@@ -89,7 +91,7 @@ export default function MarketDetailPage() {
       {displayAiResult && (
         <AiResultDetail
           aiResult={displayAiResult}
-          aiPrompt={market.ai_prompt || undefined}
+          aiPrompt={effectiveAiPrompt || market.ai_prompt || undefined}
           resolveReasoning={market.resolve_reasoning || undefined}
         />
       )}
@@ -98,10 +100,11 @@ export default function MarketDetailPage() {
       {(market.status === "monitoring" || market.status === "pending_verification") && (
         <PorTrigger
           question={market.title}
-          aiPrompt={market.ai_prompt || undefined}
+          aiPrompt={effectiveAiPrompt || market.ai_prompt || undefined}
           aiResult={displayAiResult || undefined}
           onResult={setPorResult}
           onRawResult={setPorRawResult}
+          onAiPrompt={setEffectiveAiPrompt}
           resolveContent={resolveForm}
         />
       )}

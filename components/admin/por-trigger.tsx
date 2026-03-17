@@ -129,11 +129,13 @@ interface PorTriggerProps {
   aiResult?: string;
   onResult: (summary: RunSummary) => void;
   onRawResult?: (raw: string) => void;
+  /** Called when the pipeline obtains/generates an ai_prompt (prompt_spec + tool_plan) */
+  onAiPrompt?: (prompt: string) => void;
   /** Content rendered inside the "Resolve" tab */
   resolveContent?: ReactNode;
 }
 
-export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult, resolveContent }: PorTriggerProps) {
+export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult, onAiPrompt, resolveContent }: PorTriggerProps) {
   const { accessCode } = useRole();
   const [loading, setLoading] = useState(false);
   const [steps, setSteps] = useState<PipelineStep[]>(createSteps());
@@ -220,7 +222,7 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
             }));
             setAvailableCollectors(collectors);
             // Default: enable the 4 main collectors (matching playground defaults)
-            const defaultIds = ["CollectorOpenSearch", "CollectorSitePinned", "CollectorHyDE", "CollectorWebPageReader"];
+            const defaultIds = ["CollectorOpenSearch", "CollectorSitePinned", "CollectorHyDE"];
             const defaults: Record<string, number> = {};
             for (const id of defaultIds) {
               if (collectors.some((c) => c.id === id)) {
@@ -327,6 +329,9 @@ export function PorTrigger({ question, aiPrompt, aiResult, onResult, onRawResult
       }
 
       if (!promptSpec || !toolPlan) throw new Error("Could not obtain prompt_spec and tool_plan");
+
+      // Notify parent of the generated ai_prompt so ResolveForm can derive possible_outcomes
+      onAiPrompt?.(JSON.stringify({ prompt_spec: promptSpec, tool_plan: toolPlan }));
 
       const temporalConstraint: TemporalConstraint | null =
         (promptSpec?.extra?.temporal_constraint as TemporalConstraint) ?? null;

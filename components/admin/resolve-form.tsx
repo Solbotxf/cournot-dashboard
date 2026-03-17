@@ -223,28 +223,70 @@ function applySummarizedFields(json: any, fields: SummarizedFields): any {
   return out;
 }
 
-// ── Outcome select helper ──
+// ── Outcome helpers ──
+
+function extractPossibleOutcomes(aiPrompt?: string): string[] {
+  if (!aiPrompt) return [];
+  try {
+    const parsed = JSON.parse(aiPrompt);
+    const outcomes = parsed?.prompt_spec?.market?.possible_outcomes;
+    if (Array.isArray(outcomes)) return outcomes.map(String);
+  } catch { /* ignore */ }
+  return [];
+}
 
 function OutcomeSelect({
   value,
   onValueChange,
+  label = "Outcome *",
   placeholder = "Select...",
+  possibleOutcomes,
 }: {
   value: string;
   onValueChange: (v: string) => void;
+  label?: string;
   placeholder?: string;
+  possibleOutcomes?: string[];
 }) {
+  const [customMode, setCustomMode] = useState(false);
+  const options = possibleOutcomes && possibleOutcomes.length > 0
+    ? [...possibleOutcomes.filter((o) => o !== "INVALID"), "INVALID"]
+    : ["YES", "NO", "INVALID"];
+
+  // If the current value doesn't match any option, start in custom mode
+  const effectiveCustom = customMode || (!!value && !options.includes(value));
+
   return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="YES">YES</SelectItem>
-        <SelectItem value="NO">NO</SelectItem>
-        <SelectItem value="INVALID">INVALID</SelectItem>
-      </SelectContent>
-    </Select>
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-xs text-muted-foreground">{label}</label>
+        <button
+          type="button"
+          onClick={() => { setCustomMode(!effectiveCustom); }}
+          className="text-[10px] text-primary/70 hover:text-primary transition-colors"
+        >
+          {effectiveCustom ? "Use dropdown" : "Custom input"}
+        </button>
+      </div>
+      {effectiveCustom ? (
+        <Input
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      ) : (
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((o) => (
+              <SelectItem key={o} value={o}>{o}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
   );
 }
 
@@ -254,11 +296,13 @@ interface ResolveFormProps {
   marketId: number;
   porResult: RunSummary | null;
   rawAiResult?: string;
+  aiPrompt?: string;
   onResolved?: () => void;
   onRevertToMonitoring?: () => void;
 }
 
-export function ResolveForm({ marketId, porResult, rawAiResult, onResolved, onRevertToMonitoring }: ResolveFormProps) {
+export function ResolveForm({ marketId, porResult, rawAiResult, aiPrompt, onResolved, onRevertToMonitoring }: ResolveFormProps) {
+  const possibleOutcomes = extractPossibleOutcomes(aiPrompt);
   const { accessCode } = useRole();
   const [loading, setLoading] = useState(false);
 
@@ -557,17 +601,11 @@ export function ResolveForm({ marketId, porResult, rawAiResult, onResolved, onRe
           <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Outcome *</label>
-                <select
+                <OutcomeSelect
                   value={outcome}
-                  onChange={(e) => setOutcome(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
-                >
-                  <option value="">Select...</option>
-                  <option value="YES">YES</option>
-                  <option value="NO">NO</option>
-                  <option value="INVALID">INVALID</option>
-                </select>
+                  onValueChange={setOutcome}
+                  possibleOutcomes={possibleOutcomes}
+                />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Confidence (0-1)</label>
@@ -653,10 +691,11 @@ export function ResolveForm({ marketId, porResult, rawAiResult, onResolved, onRe
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Outcome</label>
                         <OutcomeSelect
                           value={summarizedFields.outcome}
                           onValueChange={(v) => updateSummarized("outcome", v)}
+                          label="Outcome"
+                          possibleOutcomes={possibleOutcomes}
                         />
                       </div>
                       <div>
@@ -707,14 +746,13 @@ export function ResolveForm({ marketId, porResult, rawAiResult, onResolved, onRe
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">
-                            LLM Review Outcome
-                          </label>
                           <OutcomeSelect
                             value={summarizedFields.llmReviewOutcome}
                             onValueChange={(v) =>
                               updateSummarized("llmReviewOutcome", v)
                             }
+                            label="LLM Review Outcome"
+                            possibleOutcomes={possibleOutcomes}
                           />
                         </div>
                         <div>
@@ -770,14 +808,13 @@ export function ResolveForm({ marketId, porResult, rawAiResult, onResolved, onRe
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">
-                            Preliminary Outcome
-                          </label>
                           <OutcomeSelect
                             value={summarizedFields.preliminaryOutcome}
                             onValueChange={(v) =>
                               updateSummarized("preliminaryOutcome", v)
                             }
+                            label="Preliminary Outcome"
+                            possibleOutcomes={possibleOutcomes}
                           />
                         </div>
                         <div>
