@@ -362,4 +362,6 @@ export interface AdminMarket {
   resolve_reasoning: string;
   status: AdminMarketStatus;
   expected_resolve_time: string;
+  source: string;
+  market_timing_type: string;
 }

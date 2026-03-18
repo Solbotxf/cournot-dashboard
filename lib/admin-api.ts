@@ -128,6 +128,8 @@ export async function updateMarket(
     end_time?: string;
     status?: AdminMarketStatus;
     ai_result?: string;
+    expected_resolve_time?: string;
+    market_timing_type?: string;
   }
 ): Promise<{ market: AdminMarket }> {
   return adminFetch<{ market: AdminMarket }>(`${API_BASE}/markets/update`, {

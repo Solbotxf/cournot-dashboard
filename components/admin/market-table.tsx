@@ -131,6 +131,8 @@ export function MarketTable() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Title</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Market Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>AI Outcome</TableHead>
                 <TableHead>Expected Resolve</TableHead>
@@ -141,13 +143,13 @@ export function MarketTable() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : markets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No markets found
                   </TableCell>
                 </TableRow>
@@ -166,6 +168,12 @@ export function MarketTable() {
                     </TableCell>
                     <TableCell className="font-medium max-w-[300px] truncate">
                       {m.title}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {m.source || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {m.market_timing_type || "—"}
                     </TableCell>
                     <TableCell>{statusBadge(m)}</TableCell>
                     <TableCell>
