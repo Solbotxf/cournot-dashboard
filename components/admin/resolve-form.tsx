@@ -344,10 +344,9 @@ export function ResolveForm({ marketId, porResult, rawAiResult, aiPrompt, onReso
     }
   }, [porResult]);
 
-  // Update from rawAiResult when it changes (dispute updates, etc.)
-  // but only if porResult hasn't been set (porResult takes priority via its own effect)
+  // Update from rawAiResult when it changes (dispute updates, rerun, etc.)
   useEffect(() => {
-    if (!porResult && rawAiResult) {
+    if (rawAiResult) {
       const vals = parseRawAiResult();
       if (vals.outcome) setOutcome(vals.outcome);
       if (vals.confidence) setConfidence(vals.confidence);
