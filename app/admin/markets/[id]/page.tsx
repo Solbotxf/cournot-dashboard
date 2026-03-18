@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function MarketDetailPage() {
   const params = useParams<{ id: string }>();
@@ -128,8 +129,19 @@ export default function MarketDetailPage() {
         actions={
           <button
             type="button"
-            onClick={openSettings}
-            className="h-7 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50 inline-flex items-center gap-1"
+            onClick={() => {
+              if (market.status !== "monitoring") {
+                toast.info("Settings can only be changed while the market is in monitoring status");
+                return;
+              }
+              openSettings();
+            }}
+            className={cn(
+              "h-7 rounded-md border border-border px-2 text-[11px] inline-flex items-center gap-1 transition-colors",
+              market.status === "monitoring"
+                ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                : "text-muted-foreground/40 cursor-not-allowed"
+            )}
           >
             <Settings className="h-3 w-3" />
             Settings
