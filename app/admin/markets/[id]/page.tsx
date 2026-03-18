@@ -178,13 +178,13 @@ export default function MarketDetailPage() {
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="event-based">event-based</SelectItem>
-                  <SelectItem value="time-based">time-based</SelectItem>
+                  <SelectItem value="event_based">event_based</SelectItem>
+                  <SelectItem value="time_based">time_based</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground/70 mt-1 leading-relaxed">
-                <strong>event-based</strong> — resolves when a triggering event occurs (continuous monitoring).{" "}
-                <strong>time-based</strong> — outcome determinable after a known scheduled time.
+                <strong>event_based</strong> — resolves when a triggering event occurs (continuous monitoring).{" "}
+                <strong>time_based</strong> — outcome determinable after a known scheduled time.
               </p>
             </div>
             <div>
@@ -195,7 +195,7 @@ export default function MarketDetailPage() {
                 onChange={(e) => setEditExpectedResolve(e.target.value)}
               />
               <p className="text-[10px] text-muted-foreground/70 mt-1 leading-relaxed">
-                For time-based markets, set this to when the outcome becomes knowable.
+                For time_based markets, set this to when the outcome becomes knowable.
               </p>
             </div>
           </div>

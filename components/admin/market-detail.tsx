@@ -34,11 +34,9 @@ export function MarketDetail({ market, actions }: { market: AdminMarket; actions
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold truncate">{market.title}</h2>
           <div className="flex items-center gap-2 shrink-0">
-            {market.market_timing_type && (
-              <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                {market.market_timing_type}
-              </Badge>
-            )}
+            <Badge variant="outline" className={cn("text-[10px]", market.market_timing_type === "time_based" ? "bg-cyan-500/10 text-cyan-400" : market.market_timing_type === "event_based" ? "bg-orange-500/10 text-orange-400" : "text-muted-foreground")}>
+              {market.market_timing_type || "unset"}
+            </Badge>
             {market.source && (
               <Badge variant="outline" className="text-[10px] text-muted-foreground">
                 {market.source}
