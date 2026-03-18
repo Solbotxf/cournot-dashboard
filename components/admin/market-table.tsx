@@ -13,10 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SortField = "created_time" | "end_time" | "start_time";
+type SortField = "created_time" | "end_time" | "start_time" | "expected_resolve_time";
 
 const SORT_OPTIONS: { label: string; value: SortField }[] = [
   { label: "Newest", value: "created_time" },
+  { label: "Expected Resolve", value: "expected_resolve_time" },
   { label: "End Time", value: "end_time" },
   { label: "Start Time", value: "start_time" },
 ];
@@ -132,6 +133,7 @@ export function MarketTable() {
                 <TableHead>Title</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>AI Outcome</TableHead>
+                <TableHead>Expected Resolve</TableHead>
                 <TableHead>End Time</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -139,13 +141,13 @@ export function MarketTable() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : markets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No markets found
                   </TableCell>
                 </TableRow>
@@ -172,6 +174,9 @@ export function MarketTable() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {formatDate(m.expected_resolve_time)}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {formatDate(m.end_time)}
