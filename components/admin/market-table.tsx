@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 type SortField = "created_time" | "end_time" | "start_time" | "expected_resolve_time";
 
 const SORT_OPTIONS: { label: string; value: SortField }[] = [
-  { label: "Newest", value: "created_time" },
   { label: "Expected Resolve", value: "expected_resolve_time" },
+  { label: "Newest", value: "created_time" },
   { label: "End Time", value: "end_time" },
   { label: "Start Time", value: "start_time" },
 ];
@@ -29,6 +29,23 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: "Monitoring", value: "monitoring" },
   { label: "Resolved", value: "resolved" },
   { label: "All", value: "all" },
+];
+
+type SourceFilter = string | "all";
+
+const SOURCE_OPTIONS: { label: string; value: SourceFilter }[] = [
+  { label: "All", value: "all" },
+  { label: "Polymarket", value: "polymarket" },
+  { label: "Limitless", value: "limitless" },
+  { label: "Myriad", value: "myriad" },
+];
+
+type MarketTypeFilter = string | "all";
+
+const MARKET_TYPE_OPTIONS: { label: string; value: MarketTypeFilter }[] = [
+  { label: "All", value: "all" },
+  { label: "Event Based", value: "event_based" },
+  { label: "Time Based", value: "time_based" },
 ];
 
 function formatDate(iso: string) {
@@ -58,8 +75,10 @@ export function MarketTable() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<SortField>("created_time");
+  const [sort, setSort] = useState<SortField>("expected_resolve_time");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending_verification");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [marketTypeFilter, setMarketTypeFilter] = useState<MarketTypeFilter>("all");
   const pageSize = 20;
 
   const load = useCallback(async () => {
@@ -70,8 +89,10 @@ export function MarketTable() {
         page_num: page,
         page_size: pageSize,
         sort,
-        order: "desc",
+        order: "asc",
         status: statusFilter === "all" ? undefined : statusFilter,
+        source: sourceFilter === "all" ? undefined : sourceFilter,
+        market_type: marketTypeFilter === "all" ? undefined : marketTypeFilter,
       });
       setMarkets(data.markets ?? []);
       setTotal(data.total ?? 0);
@@ -80,7 +101,7 @@ export function MarketTable() {
     } finally {
       setLoading(false);
     }
-  }, [accessCode, sort, page, statusFilter]);
+  }, [accessCode, sort, page, statusFilter, sourceFilter, marketTypeFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -106,22 +127,67 @@ export function MarketTable() {
         ))}
       </div>
 
-      {/* Sort tabs */}
-      <div className="flex gap-1 rounded-lg bg-muted/30 p-1 w-fit">
-        {SORT_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => { setSort(opt.value); setPage(1); }}
-            className={cn(
-              "px-3 py-1 rounded-md text-xs font-medium transition-colors",
-              sort === opt.value
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Filter row: sort, source, market type */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Sort</span>
+          <div className="flex gap-1 rounded-lg bg-muted/30 p-1">
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setSort(opt.value); setPage(1); }}
+                className={cn(
+                  "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+                  sort === opt.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Source</span>
+          <div className="flex gap-1 rounded-lg bg-muted/30 p-1">
+            {SOURCE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setSourceFilter(opt.value); setPage(1); }}
+                className={cn(
+                  "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+                  sourceFilter === opt.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Type</span>
+          <div className="flex gap-1 rounded-lg bg-muted/30 p-1">
+            {MARKET_TYPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setMarketTypeFilter(opt.value); setPage(1); }}
+                className={cn(
+                  "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+                  marketTypeFilter === opt.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <Card>
