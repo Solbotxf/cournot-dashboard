@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, CheckCircle, ArrowLeft, Pencil, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle, ArrowLeft, Pencil, ChevronDown, Plus, Trash2, Clock } from "lucide-react";
 
 // ── Summarized Fields types ──
 
@@ -292,13 +292,22 @@ function OutcomeSelect({
 
 // ── Main component ──
 
+const SILENCE_PRESETS: { label: string; minutes: number }[] = [
+  { label: "15 minutes", minutes: 15 },
+  { label: "1 hour", minutes: 60 },
+  { label: "3 hours", minutes: 180 },
+  { label: "6 hours", minutes: 360 },
+  { label: "12 hours", minutes: 720 },
+  { label: "24 hours", minutes: 1440 },
+];
+
 interface ResolveFormProps {
   marketId: number;
   porResult: RunSummary | null;
   rawAiResult?: string;
   aiPrompt?: string;
   onResolved?: () => void;
-  onRevertToMonitoring?: () => void;
+  onRevertToMonitoring?: (silenceDeadline: string) => void;
 }
 
 export function ResolveForm({ marketId, porResult, rawAiResult, aiPrompt, onResolved, onRevertToMonitoring }: ResolveFormProps) {
@@ -414,6 +423,27 @@ export function ResolveForm({ marketId, porResult, rawAiResult, aiPrompt, onReso
       // Error handled by admin-api
     } finally {
       setLoading(false);
+    }
+  }
+
+  // ── Revert to Monitoring dialog state ──
+  const [revertOpen, setRevertOpen] = useState(false);
+  const [revertLoading, setRevertLoading] = useState(false);
+  const [customHours, setCustomHours] = useState("");
+
+  function computeDeadline(minutes: number): string {
+    return new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  }
+
+  async function handleRevert(minutes: number) {
+    if (!onRevertToMonitoring) return;
+    setRevertLoading(true);
+    try {
+      await onRevertToMonitoring(computeDeadline(minutes));
+      setRevertOpen(false);
+      setCustomHours("");
+    } finally {
+      setRevertLoading(false);
     }
   }
 
@@ -650,7 +680,7 @@ export function ResolveForm({ marketId, porResult, rawAiResult, aiPrompt, onReso
               {onRevertToMonitoring && (
                 <button
                   type="button"
-                  onClick={onRevertToMonitoring}
+                  onClick={() => setRevertOpen(true)}
                   disabled={loading}
                   className="h-9 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50 disabled:opacity-50 inline-flex items-center gap-2"
                 >
@@ -662,6 +692,72 @@ export function ResolveForm({ marketId, porResult, rawAiResult, aiPrompt, onReso
           </form>
         </CardContent>
       </Card>
+
+      {/* Revert to Monitoring Dialog */}
+      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Revert to Monitoring</DialogTitle>
+            <DialogDescription className="text-xs">
+              Choose how long to silence this market before it can be flagged again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-2">
+              {SILENCE_PRESETS.map((preset) => (
+                <button
+                  key={preset.minutes}
+                  type="button"
+                  onClick={() => handleRevert(preset.minutes)}
+                  disabled={revertLoading}
+                  className="h-9 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                >
+                  <Clock className="h-3 w-3" />
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-border pt-3">
+              <label className="text-xs text-muted-foreground mb-1.5 block">Custom duration (hours)</label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0.25"
+                  value={customHours}
+                  onChange={(e) => setCustomHours(e.target.value)}
+                  placeholder="e.g. 48"
+                  className="text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const h = parseFloat(customHours);
+                    if (!h || h <= 0) {
+                      toast.error("Enter a valid number of hours");
+                      return;
+                    }
+                    handleRevert(h * 60);
+                  }}
+                  disabled={revertLoading || !customHours}
+                  className="h-9 shrink-0 rounded-lg border border-border px-4 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50 disabled:opacity-50"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setRevertOpen(false)}
+              className="h-9 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
+            >
+              Cancel
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Advanced Edit Dialog */}
       <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>

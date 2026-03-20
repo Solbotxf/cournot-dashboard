@@ -134,6 +134,7 @@ export async function updateMarket(
     ai_result?: string;
     expected_resolve_time?: string;
     market_timing_type?: string;
+    silence_deadline?: string;
   }
 ): Promise<{ market: AdminMarket }> {
   return adminFetch<{ market: AdminMarket }>(`${API_BASE}/markets/update`, {

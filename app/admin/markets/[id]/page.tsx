@@ -75,10 +75,13 @@ export default function MarketDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleBackToMonitoring() {
+  async function handleBackToMonitoring(silenceDeadline: string) {
     if (!accessCode || !market) return;
     try {
-      await updateMarket(accessCode, market.id, { status: "monitoring" });
+      await updateMarket(accessCode, market.id, {
+        status: "monitoring",
+        silence_deadline: silenceDeadline,
+      });
       toast.success("Market moved back to monitoring");
       load();
     } catch {
