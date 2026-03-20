@@ -16,7 +16,7 @@ import {
 import {
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Settings } from "lucide-react";
+import { Loader2, Settings, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,21 +34,40 @@ export default function MarketDetailPage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [editExpectedResolve, setEditExpectedResolve] = useState("");
   const [editTimingType, setEditTimingType] = useState("");
+  const [editSilenceMinutes, setEditSilenceMinutes] = useState<number | null>(null);
+  const [editSilenceCustom, setEditSilenceCustom] = useState("");
+
+  const SILENCE_PRESETS: { label: string; minutes: number }[] = [
+    { label: "15m", minutes: 15 },
+    { label: "1h", minutes: 60 },
+    { label: "3h", minutes: 180 },
+    { label: "6h", minutes: 360 },
+    { label: "12h", minutes: 720 },
+    { label: "24h", minutes: 1440 },
+  ];
 
   function openSettings() {
     if (!market) return;
     setEditExpectedResolve(market.expected_resolve_time ? market.expected_resolve_time.slice(0, 16) : "");
     setEditTimingType(market.market_timing_type || "");
+    setEditSilenceMinutes(null);
+    setEditSilenceCustom("");
     setSettingsOpen(true);
   }
 
   async function handleSettingsSave() {
     if (!accessCode || !market) return;
+    // Resolve silence deadline
+    let silenceDeadline: string | undefined;
+    if (editSilenceMinutes !== null && editSilenceMinutes > 0) {
+      silenceDeadline = new Date(Date.now() + editSilenceMinutes * 60 * 1000).toISOString();
+    }
     setSettingsLoading(true);
     try {
       await updateMarket(accessCode, market.id, {
         expected_resolve_time: editExpectedResolve ? new Date(editExpectedResolve).toISOString() : undefined,
         market_timing_type: editTimingType || undefined,
+        silence_deadline: silenceDeadline,
       });
       toast.success("Market settings updated");
       setSettingsOpen(false);
@@ -211,6 +230,64 @@ export default function MarketDetailPage() {
               />
               <p className="text-[10px] text-muted-foreground/70 mt-1 leading-relaxed">
                 For time_based markets, set this to when the outcome becomes knowable.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Silence Deadline</label>
+              {market.silence_deadline && (
+                <p className="text-[10px] text-muted-foreground/70 mb-2">
+                  Current: {new Date(market.silence_deadline).toLocaleString("en-US", {
+                    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                  })}
+                  {new Date(market.silence_deadline) > new Date()
+                    ? <span className="text-amber-400 ml-1">(active)</span>
+                    : <span className="text-muted-foreground/50 ml-1">(expired)</span>}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {SILENCE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.minutes}
+                    type="button"
+                    onClick={() => { setEditSilenceMinutes(preset.minutes); setEditSilenceCustom(""); }}
+                    className={cn(
+                      "h-7 rounded-md border px-2.5 text-[11px] font-medium transition-colors inline-flex items-center gap-1",
+                      editSilenceMinutes === preset.minutes
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Clock className="h-3 w-3" />
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0.25"
+                  value={editSilenceCustom}
+                  onChange={(e) => {
+                    setEditSilenceCustom(e.target.value);
+                    const h = parseFloat(e.target.value);
+                    setEditSilenceMinutes(h > 0 ? h * 60 : null);
+                  }}
+                  placeholder="Custom hours"
+                  className="text-xs"
+                />
+                {editSilenceMinutes !== null && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditSilenceMinutes(null); setEditSilenceCustom(""); }}
+                    className="h-9 shrink-0 rounded-lg border border-border px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground/70 mt-1 leading-relaxed">
+                Silence the market for a duration so it won&apos;t be flagged again until the deadline passes.
               </p>
             </div>
           </div>

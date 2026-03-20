@@ -55,6 +55,17 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDateTime(iso: string): { label: string; isActive: boolean } {
+  if (!iso) return { label: "—", isActive: false };
+  const d = new Date(iso);
+  const now = new Date();
+  const isActive = d > now;
+  const label = d.toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
+  return { label, isActive };
+}
+
 function statusBadge(market: AdminMarket) {
   switch (market.status) {
     case "monitoring":
@@ -202,6 +213,7 @@ export function MarketTable() {
                 <TableHead>Status</TableHead>
                 <TableHead>AI Outcome</TableHead>
                 <TableHead>Expected Resolve</TableHead>
+                <TableHead>Silence Until</TableHead>
                 <TableHead>End Time</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -209,13 +221,13 @@ export function MarketTable() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : markets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     No markets found
                   </TableCell>
                 </TableRow>
@@ -251,6 +263,15 @@ export function MarketTable() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {formatDate(m.expected_resolve_time)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {(() => {
+                        if (!m.silence_deadline) return <span className="text-muted-foreground">—</span>;
+                        const { label, isActive } = formatDateTime(m.silence_deadline);
+                        return isActive
+                          ? <span className="text-amber-400">{label}</span>
+                          : <span className="text-muted-foreground">{label}</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {formatDate(m.end_time)}

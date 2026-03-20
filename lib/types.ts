@@ -364,4 +364,5 @@ export interface AdminMarket {
   expected_resolve_time: string;
   source: string;
   market_timing_type: string;
+  silence_deadline: string;
 }
