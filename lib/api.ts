@@ -223,6 +223,7 @@ export function transformEventToCase(event: ApiEvent): MarketCase {
 
   return {
     market_id: String(event.event_id),
+    slug: event.slug,
     source: {
       platform: event.source || "unknown",
       event_url: `https://polymarket.com/event/${event.slug}`,

@@ -45,6 +45,7 @@ function buildSyntheticCase(
 
   return {
     market_id: `playground-${Date.now()}`,
+    slug: `playground-${Date.now()}`,
     source: {
       platform: "Playground",
       event_url: "",

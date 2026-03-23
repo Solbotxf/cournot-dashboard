@@ -316,6 +316,7 @@ export type MatchStatus =
 
 export interface MarketCase {
   market_id: string;
+  slug: string;
   source: SourceInfo;
   parse_result: ParseResult;
   oracle_result: RunSummary | null;
