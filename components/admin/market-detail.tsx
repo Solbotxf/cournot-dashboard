@@ -83,11 +83,11 @@ export function MarketDetail({ market, actions }: { market: AdminMarket; actions
             <p>{market.expected_resolve_time ? formatDate(market.expected_resolve_time) : "—"}</p>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground">AI Result</span>
+            <span className="text-xs text-muted-foreground">Market Resolved</span>
             <p>{market.ai_result_time ? formatDate(market.ai_result_time) : "—"}</p>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground">Resolved</span>
+            <span className="text-xs text-muted-foreground">First AI Notification</span>
             <p className={market.resolve_time ? "text-amber-400" : ""}>
               {market.resolve_time ? formatDate(market.resolve_time) : "—"}
             </p>
