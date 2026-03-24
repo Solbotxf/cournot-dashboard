@@ -130,82 +130,100 @@ function safeParseJson(raw: string): unknown {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
+function ExternalDataItem({ d }: { d: MarketExternalData }) {
+  const entities = safeParseJson(d.entities) as string[] | null;
+  const payload = safeParseJson(d.data);
+
+  return (
+    <div className="rounded-lg border border-border p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Badge variant="outline" className="text-[10px] shrink-0">{d.source_name}</Badge>
+          <span className="text-sm font-medium truncate">{d.title}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge
+            variant="outline"
+            className={cn("text-[10px]", d.event_concluded ? "bg-green-500/10 text-green-400" : "bg-blue-500/10 text-blue-400")}
+          >
+            {d.event_concluded ? "Concluded" : "In Progress"}
+          </Badge>
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            {d.match_type}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px]",
+              d.relevance_score >= 0.8 ? "text-green-400" : d.relevance_score >= 0.5 ? "text-amber-400" : "text-muted-foreground"
+            )}
+          >
+            relevance {d.relevance_score.toFixed(2)}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 text-xs">
+        <div>
+          <span className="text-muted-foreground">External ID</span>
+          <p className="font-mono">{d.external_id}</p>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Event Time</span>
+          <p>{d.event_time ? formatDate(d.event_time) : "—"}</p>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Fetched</span>
+          <p>{d.fetched_time ? formatDate(d.fetched_time) : "—"}</p>
+        </div>
+      </div>
+
+      {entities && entities.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Entities</span>
+          {entities.map((e, i) => (
+            <Badge key={i} variant="secondary" className="text-[10px]">{e}</Badge>
+          ))}
+        </div>
+      )}
+
+      {payload !== null && (
+        <details>
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
+            Raw data payload
+          </summary>
+          <pre className="mt-2 rounded-lg bg-muted/30 p-3 text-[11px] font-mono text-muted-foreground overflow-x-auto max-h-[300px] overflow-y-auto">
+            {JSON.stringify(payload, null, 2)}
+          </pre>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export function ExternalDataSection({ data }: { data: MarketExternalData[] }) {
+  const sorted = [...data].sort((a, b) => b.relevance_score - a.relevance_score);
+  const top = sorted[0];
+  const rest = sorted.slice(1);
+
   return (
     <Card>
       <CardContent className="p-6">
         <h3 className="text-sm font-semibold mb-4">External Data</h3>
         <div className="space-y-4">
-          {data.map((d) => {
-            const entities = safeParseJson(d.entities) as string[] | null;
-            const payload = safeParseJson(d.data);
-
-            return (
-              <div key={d.id} className="rounded-lg border border-border p-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Badge variant="outline" className="text-[10px] shrink-0">{d.source_name}</Badge>
-                    <span className="text-sm font-medium truncate">{d.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge
-                      variant="outline"
-                      className={cn("text-[10px]", d.event_concluded ? "bg-green-500/10 text-green-400" : "bg-blue-500/10 text-blue-400")}
-                    >
-                      {d.event_concluded ? "Concluded" : "In Progress"}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                      {d.match_type}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-[10px]",
-                        d.relevance_score >= 0.8 ? "text-green-400" : d.relevance_score >= 0.5 ? "text-amber-400" : "text-muted-foreground"
-                      )}
-                    >
-                      relevance {d.relevance_score.toFixed(2)}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">External ID</span>
-                    <p className="font-mono">{d.external_id}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Event Time</span>
-                    <p>{d.event_time ? formatDate(d.event_time) : "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Fetched</span>
-                    <p>{d.fetched_time ? formatDate(d.fetched_time) : "—"}</p>
-                  </div>
-                </div>
-
-                {entities && entities.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">Entities</span>
-                    {entities.map((e, i) => (
-                      <Badge key={i} variant="secondary" className="text-[10px]">{e}</Badge>
-                    ))}
-                  </div>
-                )}
-
-                {payload !== null && (
-                  <details>
-                    <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
-                      Raw data payload
-                    </summary>
-                    <pre className="mt-2 rounded-lg bg-muted/30 p-3 text-[11px] font-mono text-muted-foreground overflow-x-auto max-h-[300px] overflow-y-auto">
-                      {JSON.stringify(payload, null, 2)}
-                    </pre>
-                  </details>
-                )}
+          <ExternalDataItem d={top} />
+          {rest.length > 0 && (
+            <details>
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
+                {rest.length} more source{rest.length > 1 ? "s" : ""}
+              </summary>
+              <div className="space-y-4 mt-4">
+                {rest.map((d) => (
+                  <ExternalDataItem key={d.id} d={d} />
+                ))}
               </div>
-            );
-          })}
+            </details>
+          )}
         </div>
       </CardContent>
     </Card>
