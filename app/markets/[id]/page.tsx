@@ -3,14 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { fetchPublicMarket } from "@/lib/admin-api";
-import type { AdminMarket } from "@/lib/types";
-import { MarketDetail } from "@/components/admin/market-detail";
+import type { AdminMarket, MarketExternalData, MarketClassification } from "@/lib/types";
+import { MarketDetail, ExternalDataSection } from "@/components/admin/market-detail";
 import { AiResultDetail } from "@/components/admin/ai-result-detail";
 import { Loader2 } from "lucide-react";
 
 export default function PublicMarketDetailPage() {
   const params = useParams<{ id: string }>();
   const [market, setMarket] = useState<AdminMarket | null>(null);
+  const [externalData, setExternalData] = useState<MarketExternalData[]>([]);
+  const [classification, setClassification] = useState<MarketClassification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,16 +21,19 @@ export default function PublicMarketDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const m = await fetchPublicMarket(Number(params.id));
-      if (!m) {
+      const info = await fetchPublicMarket(Number(params.id));
+      if (!info) {
         setError("Market not found");
-      } else if (m.status !== "resolved") {
+      } else if (info.market.status !== "resolved") {
         setError("This market is not yet resolved and is not available for public viewing.");
         setMarket(null);
         setLoading(false);
         return;
+      } else {
+        setMarket(info.market);
+        setExternalData(info.external_data ?? []);
+        setClassification(info.classification ?? null);
       }
-      setMarket(m);
     } catch {
       setError("Failed to load market");
     } finally {
@@ -61,7 +66,11 @@ export default function PublicMarketDetailPage() {
         Markets &rarr; <span className="text-foreground">{market.title}</span>
       </div>
 
-      <MarketDetail market={market} />
+      <MarketDetail market={market} classification={classification} />
+
+      {externalData.length > 0 && (
+        <ExternalDataSection data={externalData} />
+      )}
 
       {market.ai_result && (
         <AiResultDetail

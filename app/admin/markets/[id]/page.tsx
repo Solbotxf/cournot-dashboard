@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useRole } from "@/lib/role";
 import { fetchMarket, updateMarket } from "@/lib/admin-api";
-import type { AdminMarket, RunSummary } from "@/lib/types";
-import { MarketDetail } from "@/components/admin/market-detail";
+import type { AdminMarket, RunSummary, MarketExternalData, MarketClassification } from "@/lib/types";
+import { MarketDetail, ExternalDataSection } from "@/components/admin/market-detail";
 import { AiResultDetail } from "@/components/admin/ai-result-detail";
 import { PorTrigger } from "@/components/admin/por-trigger";
 import { ResolveForm } from "@/components/admin/resolve-form";
@@ -24,6 +24,8 @@ export default function MarketDetailPage() {
   const params = useParams<{ id: string }>();
   const { accessCode } = useRole();
   const [market, setMarket] = useState<AdminMarket | null>(null);
+  const [externalData, setExternalData] = useState<MarketExternalData[]>([]);
+  const [classification, setClassification] = useState<MarketClassification | null>(null);
   const [loading, setLoading] = useState(true);
   const [porResult, setPorResult] = useState<RunSummary | null>(null);
   const [porRawResult, setPorRawResult] = useState<string | null>(null);
@@ -83,8 +85,10 @@ export default function MarketDetailPage() {
     if (!accessCode || !params.id) return;
     setLoading(true);
     try {
-      const m = await fetchMarket(accessCode, Number(params.id));
-      setMarket(m);
+      const info = await fetchMarket(accessCode, Number(params.id));
+      setMarket(info?.market ?? null);
+      setExternalData(info?.external_data ?? []);
+      setClassification(info?.classification ?? null);
     } catch {
       // Error handled by admin-api
     } finally {
@@ -148,6 +152,7 @@ export default function MarketDetailPage() {
 
       <MarketDetail
         market={market}
+        classification={classification}
         actions={
           <button
             type="button"
@@ -170,6 +175,11 @@ export default function MarketDetailPage() {
           </button>
         }
       />
+
+      {/* External Data */}
+      {externalData.length > 0 && (
+        <ExternalDataSection data={externalData} />
+      )}
 
       {/* AI Result Detail — full evidence, reasoning, proofs */}
       {displayAiResult && (

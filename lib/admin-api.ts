@@ -1,4 +1,4 @@
-import type { AdminMarket, AdminMarketStatus } from "@/lib/types";
+import type { AdminMarket, AdminMarketStatus, MarketInfo } from "@/lib/types";
 import { toast } from "sonner";
 
 const API_BASE = "/api/proxy";
@@ -83,25 +83,25 @@ export async function fetchMarkets(
 export async function fetchMarket(
   code: string,
   id: number
-): Promise<AdminMarket | null> {
+): Promise<MarketInfo | null> {
   const qs = new URLSearchParams();
   qs.set("code", code);
   qs.set("id", String(id));
-  const res = await adminFetch<{ market: AdminMarket }>(
-    `${API_BASE}/markets/id?${qs.toString()}`
+  const res = await adminFetch<MarketInfo>(
+    `${API_BASE}/markets/info?${qs.toString()}`
   );
-  return res.market ?? null;
+  return res.market ? res : null;
 }
 
 export async function fetchPublicMarket(
   id: number
-): Promise<AdminMarket | null> {
+): Promise<MarketInfo | null> {
   const qs = new URLSearchParams();
   qs.set("id", String(id));
-  const res = await adminFetch<{ market: AdminMarket }>(
-    `${API_BASE}/markets/id?${qs.toString()}`
+  const res = await adminFetch<MarketInfo>(
+    `${API_BASE}/markets/info?${qs.toString()}`
   );
-  return res.market ?? null;
+  return res.market ? res : null;
 }
 
 export async function createMarket(

@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminMarket } from "@/lib/types";
+import type { AdminMarket, MarketClassification, MarketExternalData } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
@@ -27,7 +27,12 @@ function statusBadge(market: AdminMarket) {
   }
 }
 
-export function MarketDetail({ market, actions }: { market: AdminMarket; actions?: ReactNode }) {
+function parseEntityRoles(raw: string): Record<string, string> {
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
+export function MarketDetail({ market, classification, actions }: { market: AdminMarket; classification?: MarketClassification | null; actions?: ReactNode }) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -96,6 +101,111 @@ export function MarketDetail({ market, actions }: { market: AdminMarket; actions
             <span className="text-xs text-muted-foreground">Created By</span>
             <p className="font-mono text-xs truncate">{market.user_id}</p>
           </div>
+        </div>
+
+        {classification && (
+          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">Classification</span>
+            <Badge variant="outline" className="text-[10px]">{classification.category}</Badge>
+            {classification.subcategory && (
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">{classification.subcategory}</Badge>
+            )}
+            {Object.entries(parseEntityRoles(classification.entity_roles)).map(([role, entity]) => (
+              <span key={role} className="text-[11px] text-muted-foreground">
+                <span className="text-muted-foreground/60">{role}:</span>{" "}
+                <span className="text-foreground">{entity}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── External Data Section ──
+
+function safeParseJson(raw: string): unknown {
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+export function ExternalDataSection({ data }: { data: MarketExternalData[] }) {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className="text-sm font-semibold mb-4">External Data</h3>
+        <div className="space-y-4">
+          {data.map((d) => {
+            const entities = safeParseJson(d.entities) as string[] | null;
+            const payload = safeParseJson(d.data);
+
+            return (
+              <div key={d.id} className="rounded-lg border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="text-[10px] shrink-0">{d.source_name}</Badge>
+                    <span className="text-sm font-medium truncate">{d.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge
+                      variant="outline"
+                      className={cn("text-[10px]", d.event_concluded ? "bg-green-500/10 text-green-400" : "bg-blue-500/10 text-blue-400")}
+                    >
+                      {d.event_concluded ? "Concluded" : "In Progress"}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                      {d.match_type}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px]",
+                        d.relevance_score >= 0.8 ? "text-green-400" : d.relevance_score >= 0.5 ? "text-amber-400" : "text-muted-foreground"
+                      )}
+                    >
+                      relevance {d.relevance_score.toFixed(2)}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">External ID</span>
+                    <p className="font-mono">{d.external_id}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Event Time</span>
+                    <p>{d.event_time ? formatDate(d.event_time) : "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Fetched</span>
+                    <p>{d.fetched_time ? formatDate(d.fetched_time) : "—"}</p>
+                  </div>
+                </div>
+
+                {entities && entities.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Entities</span>
+                    {entities.map((e, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px]">{e}</Badge>
+                    ))}
+                  </div>
+                )}
+
+                {payload !== null && (
+                  <details>
+                    <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
+                      Raw data payload
+                    </summary>
+                    <pre className="mt-2 rounded-lg bg-muted/30 p-3 text-[11px] font-mono text-muted-foreground overflow-x-auto max-h-[300px] overflow-y-auto">
+                      {JSON.stringify(payload, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

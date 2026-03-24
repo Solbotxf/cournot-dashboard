@@ -367,3 +367,30 @@ export interface AdminMarket {
   market_timing_type: string;
   silence_deadline: string;
 }
+
+export interface MarketExternalData {
+  id: number;
+  source_name: string;
+  external_id: string;
+  title: string;
+  entities: string; // JSON array as string
+  data: string; // JSON object as string
+  event_time: string;
+  fetched_time: string;
+  event_concluded: boolean;
+  relevance_score: number;
+  match_type: string;
+}
+
+export interface MarketClassification {
+  market_id: number;
+  category: string;
+  subcategory: string;
+  entity_roles: string; // JSON object as string
+}
+
+export interface MarketInfo {
+  market: AdminMarket;
+  external_data: MarketExternalData[];
+  classification: MarketClassification | null;
+}
